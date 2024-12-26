@@ -11,7 +11,7 @@ To build just run 'gcc epson.c -o epson'.<br>
 To run it:<br>
 Mode 1: epson file.txt > output.svg - Will generate the output inside output.svg.<br>
 Mode 2: epson file.txt print.svg - Will generate the output inside the print.svg file.<br>
-Mode 3: epson file.txt page - Will generate page_xxx.svg, one file per page generated. The argument has to be the word 'page' in lowercase.<br>
+Mode 3: epson file.txt page - Will generate page_xxx.svg, one file per page generated. The second argument has to be the word 'page' in lowercase.<br>
 
 Mode 1 and Mode 2 will ignore FF (form feed) characters, and will have all sorts of issues is FF is issued. Those modes are good only for single page printings.<br>
 Mode 3 will create a page_001.svg file, then page_002.svg and so on, every time a FF character is found.<br>
