@@ -1,0 +1,88 @@
+---------1---------2---------3---------4---------5---------6---------8---------9---------1---------2---------3--
+02 This is EboldF text!
+03 This is 4italic5 text!
+04 This is Gdouble-strikeH text!
+05 This is condensed text!
+06 This is Mcondensed-eliteP text!
+07 This is MeliteP text!
+08 This is wide text!
+09 This is S0superscriptT text!
+10 This is S1subscriptT text!
+11 This is -1underline-0 text!
+12 ++++++++++++++++++++++++++++++++++
+13 ABCD  HS0HTH  HS1HTH  
+14 TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+15 ---------HH
+16 M---------1-HHP
+17 ---------1------HH
+18 M---------1---------HHP
+19 
+20 ABCD  HS0HTH  HS1HTH  
+21 TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+22 HHHIIIXXX
+23 XXXIIIHHH
+24 ++++++++++++++++++++++++++++++++++
+25   |
+26   |
+27 
+28
+29
+30 ABCD  HS0HTH  HS1HTH  
+31 TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+32 HHHIIIXXX
+33 XXXIIIHHH
+34 ++++++++++++++++++++++++++++++++++
+35   |
+36   |
+37 
+38
+39
+40 ABCD  HS0HTH  HS1HTH  
+41 TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+42 HHHIIIXXX
+43 XXXIIIHHH
+44 ++++++++++++++++++++++++++++++++++
+45   |
+46   |
+47 
+48
+49
+50 ABCD  HS0HTH  HS1HTH  
+51 TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+52 HHHIIIXXX
+53 XXXIIIHHH
+54 ++++++++++++++++++++++++++++++++++
+55   |
+56   |
+57 
+---------1---------2---------3---------4---------5---------6---------8---------9---------1---------2---------3--
+59
+60 ABCD  HS0HTH  HS1HTH  
+61 TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+62 HHHIIIXXX
+63 XXXIIIHHH
+64 ++++++++++++++++++++++++++++++++++
+65   |
+66   |
+67
+68
+69
+70 ABCD  HS0HTH  HS1HTH  
+71 TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+72 HHHIIIXXX
+73 XXXIIIHHH
+74 ++++++++++++++++++++++++++++++++++
+75   |
+76   |
+77 
+78
+79
+80 ABCD  HS0HTH  HS1HTH  
+81 TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+82 HHHIIIXXX
+83 XXXIIIHHH
+84 ++++++++++++++++++++++++++++++++++
+85   |
+86   |
+87 
+88
