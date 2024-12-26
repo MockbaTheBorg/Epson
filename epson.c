@@ -11,7 +11,7 @@
 FILE *fi;
 FILE *fo;
 
-char pagename[15];
+char pagename[256];
 int page = 1;
 
 // Printer specific functions
@@ -46,14 +46,14 @@ int main(int argc, char *argv[]) {
 
         // if the outname is 'page' rename the file to page<number>.svg
         if (strcmp(outname, "page") == 0) {
-            sprintf(pagename, "page_%d.svg", page);
+            sprintf(pagename, "page_%03d.svg", page);
             page++;
-            fo = fopen(pagename, "w");
         } else {
-            fo = fopen(outname, "w");
+            strcpy(pagename, outname);
         }
+        fo = fopen(pagename, "w");
         if (fo == NULL) {
-            fprintf(stderr, "Error opening file %s\n", outname);
+            fprintf(stderr, "Error opening file %s\n", pagename);
             return 1;
         }
     } else {

@@ -16,6 +16,9 @@
 #define DOT_RADIUS 0.5      // pt
 #define DOT_OPACITY 0.5     // 0.0 to 1.0
 
+// Printer flags
+int auto_cr = 1;
+
 // Printer modes
 int mode_bold = 0;
 int mode_italic = 0;
@@ -225,7 +228,7 @@ void printer_print_char(int c) {
 }
 
 // Process graphics
-void process_graphics() {
+void process_graphics(float gstep) {
     int nl = file_get_char(fi);
     if (nl == EOF)
         return;
@@ -234,7 +237,7 @@ void process_graphics() {
         return;
     int n = nl + 256 * nh;
     print_stderr("<%d>", n);
-    float xs = xstep * step60;
+    float xs = gstep * step60;
     int c;
     while (n > 0) {
         c = file_get_char(fi);
@@ -367,8 +370,12 @@ int printer_process_escape() {
         case '-':   // Underline mode
             process_underline();
             break;
+        case 'K':   // 60dpi graphics
+            process_graphics(1.0);
+            break;
         case 'L':   // 120dpi graphics
-            process_graphics();
+        case 'Y':   // 120dpi graphics (fast)
+            process_graphics(0.5);
             break;
         case '0':   // Set LPI = 1/8 in
             lstep = 1.0 / 8.0;
@@ -379,11 +386,11 @@ int printer_process_escape() {
         case '2':   // Set LPI = 1/6 in
             lstep = 1.0 / 6.0;
             break;
-        case '3':   // Set LPI = n/216 in
-            process_lpi(216);
-            break;
         case 'A':   // Set LPI n/72 in
             process_lpi(72);
+            break;
+        case '3':   // Set LPI = n/216 in
+            process_lpi(216);
             break;
         default:
             break;
@@ -397,7 +404,7 @@ void process_ff() {
     if (page > 1) {
         file_output(fo, svg_footer);
         fclose(fo);
-        sprintf(pagename, "page_%d.svg", page);
+        sprintf(pagename, "page_%03d.svg", page);
         page++;
         fo = fopen(pagename, "w");
         if (fo == NULL) {
@@ -408,6 +415,18 @@ void process_ff() {
     }
     xpos = page_xmargin;
     ypos = page_ymargin;
+}
+
+// Process backspace
+void process_bs() {
+    float xs = xstep * step60;
+    if (mode_wide1line || mode_wide) {
+        xpos -= xs * 24.0;
+    } else {
+        xpos -= xs * 12.0;
+    }
+    if (xpos < page_xmargin)
+        xpos = page_xmargin;
 }
 
 // Process a character
@@ -435,8 +454,13 @@ int printer_process_char(int c) {
     // Process control characters
     print_control(c);
     switch (c) {
+        case 8:     // BS
+            process_bs();
+            break;
         case 10:    // LF
             ypos += lstep;
+            if (auto_cr)
+                xpos = page_xmargin;
             break;
         case 12:    // FF
             print_stderr("\n");
