@@ -795,8 +795,11 @@ void pdf_draw_tractor_edges_page() {
         float hole_spacing = TRACTOR_HOLE_SPACING_IN;
         float hole_margin = TRACTOR_HOLE_MARGIN_IN;
         float hole_radius = TRACTOR_HOLE_RADIUS_PT;
-        float left_center_x = (tw / 2.0f); // center of left strip (inches from left edge)
-        float right_center_x = full_width - (tw / 2.0f); // center of right strip (inches from left edge)
+        // place hole centers at the midpoint between the seam and the outer paper edge
+        // left seam is at seam_left_in (inches from left edge); left edge is at 0.0
+        float left_center_x = (seam_left_in + 0.0f) / 2.0f;
+        // right seam is at seam_right_in; right edge is at full_width
+        float right_center_x = (seam_right_in + full_width) / 2.0f;
 
         for (float y = hole_margin; y <= page_height - hole_margin + 0.0001f; y += hole_spacing) {
             // draw circles in inches -- pdf_draw_dot_inch expects inches for x,y and points for radius
