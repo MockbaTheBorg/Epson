@@ -40,12 +40,14 @@ int main(int argc, char *argv[]) {
     int opt_edge = 0;
     int opt_green = 0;
     int opt_wide = 0;
+    int opt_stdin = 0;
 
     // Parse command line options
     static struct option long_options[] = {
         {"edge", no_argument, 0, 'e'},
         {"green", no_argument, 0, 'g'},
         {"output", required_argument, 0, 'o'},
+        {"stdin", no_argument, 0, 's'},
         {"wide", no_argument, 0, 'w'},
         {"debug", no_argument, 0, 'd'},
         {"help", no_argument, 0, 'h'},
@@ -54,47 +56,55 @@ int main(int argc, char *argv[]) {
     int opt;
     int opt_index = 0;
     // getopt loop: options come before the input filename
-    while ((opt = getopt_long(argc, argv, "ego:whd", long_options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "ego:whds", long_options, &opt_index)) != -1) {
         switch (opt) {
-            case 'e':
-                opt_edge = 1;
+             case 'e':
+                 opt_edge = 1;
+                 break;
+             case 'g':
+                 opt_green = 1;
+                 break;
+             case 'o':
+                 outname = strdup(optarg);
+                 break;
+            case 's':
+                opt_stdin = 1;
                 break;
-            case 'g':
-                opt_green = 1;
-                break;
-            case 'o':
-                outname = strdup(optarg);
-                break;
-            case 'w':
-                opt_wide = 1;
-                break;
-            case 'd':
-                // enable runtime debug messages
-                debug_enabled = 1;
-                print_stderr("Debug enabled.\n");
-                break;
-            case 'h':
-                print_usage(argv[0]);
-                return 0;
-            default:
-                print_usage(argv[0]);
-                return 1;
-        }
-    }
+             case 'w':
+                 opt_wide = 1;
+                 break;
+             case 'd':
+                 // enable runtime debug messages
+                 debug_enabled = 1;
+                 print_stderr("Debug enabled.\n");
+                 break;
+             case 'h':
+                 print_usage(argv[0]);
+                 return 0;
+             default:
+                 print_usage(argv[0]);
+                 return 1;
+         }
+     }
 
-    // Check if there is a filename after the options
-    if (optind < argc) {
-        filename = argv[optind];
+    // Decide input source: stdin (-s) takes precedence over any filename supplied
+    if (opt_stdin) {
+        fi = stdin;
     } else {
-        fprintf(stderr, "Usage: %s [options] <inputfile>\n  -e|--edge     add perforated tractor edges\n  -g|--green    add green guide strips\n  -o|--output   output filename (default stdout)\n  -w|--wide     use wide/legal carriage sizes\n", argv[0]);
-        return 1;
-    }
+        // Check if there is a filename after the options
+        if (optind < argc) {
+            filename = argv[optind];
+        } else {
+            fprintf(stderr, "Usage: %s [options] <inputfile>\n  -e|--edge     add perforated tractor edges\n  -g|--green    add green guide strips\n  -o|--output   output filename (default stdout)\n  -w|--wide     use wide/legal carriage sizes\n  -s|--stdin    read input from standard input (takes precedence)\n", argv[0]);
+            return 1;
+        }
 
-    // Open input file
-    fi = fopen(filename, "rb");
-    if (fi == NULL) {
-        fprintf(stderr, "Error opening file %s\n", filename);
-        return 1;
+        // Open input file
+        fi = fopen(filename, "rb");
+        if (fi == NULL) {
+            fprintf(stderr, "Error opening file %s\n", filename);
+            return 1;
+        }
     }
 
     // Open output file or stdout
