@@ -49,6 +49,19 @@ float ystep = 1.0;          // in
 float lstep = 0.0;          // in
 float yoffset = 0;          // in   (subscript/superscript)
 
+// Forward declarations for tractor-edge option (defined later)
+extern int draw_tractor_edges;
+extern int draw_green_strips;
+extern int wide_carriage;
+void pdf_draw_tractor_edges_page(void);
+
+// Tractor edge parameters (standard continuous-form defaults)
+#define TRACTOR_WIDTH_IN 0.5f                 // width of each tractor strip (inches)
+#define TRACTOR_HOLE_SPACING_IN 0.5f          // center-to-center spacing of holes (inches)
+#define TRACTOR_HOLE_MARGIN_IN 0.25f          // margin from top/bottom to first hole (inches)
+// Hole diameter 5/32" => radius in points: (0.15625 * 72) / 2 = 5.625 pt
+#define TRACTOR_HOLE_RADIUS_PT 5.625f
+
 // --- Lightweight multi-page PDF generation ---
 // We produce a small PDF with multiple pages. Dots are drawn as filled circles
 // approximated using four cubic Bezier curves.
@@ -73,6 +86,12 @@ void pdf_new_page() {
     pdf_contents[pdf_pages] = (char*)malloc(pdf_caps[pdf_pages]);
     pdf_lens[pdf_pages] = 0;
     pdf_pages = new_pages;
+
+    // If requested, draw tractor edges or green background immediately on the new page so they appear under dots
+    if (draw_tractor_edges || draw_green_strips) {
+        // the drawing routines append to the current page buffer
+        pdf_draw_tractor_edges_page();
+    }
 }
 
 void pdf_ensure(size_t extra) {
@@ -186,8 +205,10 @@ void pdf_write(FILE *out) {
         int pageObjId = 3 + i * 2;
         int contentObjId = 4 + i * 2;
         offsets[pageObjId] = ftell(out);
-        float w_pt = page_width * 72.0f;
-        float h_pt = page_height * 72.0f;
+        // Page width should be page_width (printable) or page_width+2*tractor when edges enabled
+        float media_width = draw_tractor_edges ? (page_width + (2.0f * TRACTOR_WIDTH_IN)) : page_width;
+        float w_pt = media_width * 72.0f;
+        float h_pt = page_height * 72.0f; // always 11 inches tall
         fprintf(out, "%d 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %.3f %.3f] /Contents %d 0 R /Resources << >> >>\nendobj\n", pageObjId, w_pt, h_pt, contentObjId);
     }
 
@@ -294,7 +315,13 @@ void printer_reset() {
         return;
     }
     // Restore default settings
-    page_width = PAGE_WIDTH;
+    // Respect wide_carriage: if set, keep wide printable page_width
+    if (wide_carriage) {
+        // wide carriage printable width in inches
+        page_width = 13.875f;
+    } else {
+        page_width = PAGE_WIDTH;
+    }
     page_height = PAGE_HEIGHT;
     page_cpi = PAGE_CPI;
     page_lpi = PAGE_LPI;
@@ -340,10 +367,23 @@ int file_get_char(FILE *fi) {
 void printer_print_column(int c) {
     float ys = ystep * step72;
     float adj = 1.0 / 72.0 * 0.5;
+    // if tractor edges are present, printable area is offset from left by tractor strip width
+    float x_offset_in = draw_tractor_edges ? TRACTOR_WIDTH_IN : 0.0f;
+    // Printable area bounds (in inches)
+    float printable_left = x_offset_in;
+    float printable_right = x_offset_in + page_width;
+
     for (int i = 0; i < 9; i++) {
         if (c & (1 << i)) {
-            // Draw a small filled rectangle for each dot in the PDF content stream
-            pdf_draw_dot_inch(xpos + adj, ypos + yoffset + adj + (i * ys), DOT_RADIUS);
+            float x_in = x_offset_in + xpos + adj;
+            // Skip dots that would fall inside the tractor edges or outside the printable area
+            if (draw_tractor_edges) {
+                if (x_in < printable_left - 1e-6f || x_in > printable_right + 1e-6f) {
+                    continue;
+                }
+            }
+            // Draw a small filled circle for each dot in the PDF content stream
+            pdf_draw_dot_inch(x_in, ypos + yoffset + adj + (i * ys), DOT_RADIUS);
         }
     }
 }
@@ -647,6 +687,75 @@ int printer_process_char(int c) {
             break;
     }
     return 0;
+}
+
+// Option to draw tractor edges (set via environment variable or by changing this flag)
+int draw_tractor_edges = 0;
+int draw_green_strips = 0;
+int wide_carriage = 0;
+
+// (TRACTOR_* macros are defined earlier near declarations)
+
+// Draw tractor edges (holes + microperforation lines) for the current page
+void pdf_draw_tractor_edges_page() {
+    if (!draw_tractor_edges && !draw_green_strips) return;
+    // calculate in points
+    float tw = TRACTOR_WIDTH_IN;
+    // full_width should be printable page_width + tractor strips (only if enabled)
+    float full_width = page_width + (draw_tractor_edges ? (tw * 2.0f) : 0.0f); // full paper width including strips when enabled
+    float w_pt = full_width * 72.0f;
+    float h_pt = page_height * 72.0f;
+    // seam positioned inside line of holes, between holes and printable area; place at 1/8" (0.125in) from printable edge
+    float seam_offset_in = 0.125f;
+    float seam_left_in = (tw - seam_offset_in); // inches from left edge
+    float seam_right_in = (full_width - tw + seam_offset_in); // inches from left edge for right side
+
+    // If green strips requested, draw them across the full paper width.
+    if (draw_green_strips) {
+        // Draw alternating horizontal green bands across the full paper width.
+        // Standard band height: 0.5 in (matches 6 LPI -> 6 lines per inch). Bands alternate green/white.
+        float band_h_in = 0.5f; // inches
+        float full_w_in = full_width; // inches
+        float y = 0.0f;
+        // set fill color to a soft green (use RGB 0.85 1 0.85 for light green)
+        pdf_appendf("0.85 1 0.85 rg\n");
+        while (y < page_height - 1e-6f) {
+            // draw a green band from y to y+band_h_in
+            float h_band = band_h_in;
+            if (y + h_band > page_height) h_band = page_height - y;
+            pdf_appendf("%.3f %.3f %.3f %.3f re\nf\n", 0.0f, y * 72.0f, full_w_in * 72.0f, h_band * 72.0f);
+            // advance by two bands (green + white)
+            y += band_h_in * 2.0f;
+        }
+        // reset fill color to black
+        pdf_appendf("0 0 0 rg\n");
+    }
+
+    // Only draw microperforation vertical and tractor holes if tractor edges requested
+    if (draw_tractor_edges) {
+        // Draw microperforation vertical as many small dots at seams
+        float micro_spacing_in = 0.03125f; // spacing between microperforation dots (1/32")
+        float micro_radius_pt = 0.45f; // small dot radius in points (smaller)
+        for (float y = 0.0f; y <= page_height + 0.0001f; y += micro_spacing_in) {
+            pdf_draw_dot_inch(seam_left_in, y, micro_radius_pt);
+            pdf_draw_dot_inch(seam_right_in, y, micro_radius_pt);
+        }
+
+        // Draw tractor holes along left and right edges (centered in the strip)
+        float hole_spacing = TRACTOR_HOLE_SPACING_IN;
+        float hole_margin = TRACTOR_HOLE_MARGIN_IN;
+        float hole_radius = TRACTOR_HOLE_RADIUS_PT;
+        float left_center_x = (tw / 2.0f); // center of left strip (inches from left edge)
+        float right_center_x = full_width - (tw / 2.0f); // center of right strip (inches from left edge)
+
+        for (float y = hole_margin; y <= page_height - hole_margin + 0.0001f; y += hole_spacing) {
+            // draw circles in inches -- pdf_draw_dot_inch expects inches for x,y and points for radius
+            pdf_draw_dot_inch(left_center_x, y, hole_radius);
+            pdf_draw_dot_inch(right_center_x, y, hole_radius);
+        }
+    }
+
+    // (horizontal perforations removed) 
 }
 
 #endif // EPSON_H
