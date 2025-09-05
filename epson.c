@@ -5,6 +5,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <getopt.h>
+#include <unistd.h>
 
 static void print_usage(const char *prog) {
     fprintf(stderr, "Usage: %s [options] <inputfile>\n", prog);
@@ -69,6 +70,7 @@ int main(int argc, char *argv[]) {
                 break;
             case 'd':
                 // enable runtime debug messages
+                debug_enabled = 1;
                 print_stderr("Debug enabled.\n");
                 break;
             case 'h':

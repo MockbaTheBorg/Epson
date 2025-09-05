@@ -53,7 +53,9 @@ float yoffset = 0;          // in   (subscript/superscript)
 extern int draw_tractor_edges;
 extern int draw_green_strips;
 extern int wide_carriage;
+extern int debug_enabled; // forward decl for debug flag
 void pdf_draw_tractor_edges_page(void);
+void printer_reset(void);
 
 // Tractor edge parameters (standard continuous-form defaults)
 #define TRACTOR_WIDTH_IN 0.5f                 // width of each tractor strip (inches)
@@ -240,8 +242,9 @@ void pdf_write(FILE *out) {
 // Is the printer initialized?
 int epson_initialized = 0;
 
-// Print a message to stderr
+// Print a message to stderr (debug/info only)
 void print_stderr(const char *msg, ...) {
+    if (!debug_enabled) return; // silent unless debug enabled
     va_list args;
     va_start(args, msg);
     vfprintf(stderr, msg, args);
@@ -250,6 +253,8 @@ void print_stderr(const char *msg, ...) {
 
 // Print a control character to stderr
 void print_control(int c) {
+    // use debug printing for control output
+    if (!debug_enabled) return;
     print_stderr("<%s>", control_names[c]);
     if (c == 10) {
         print_stderr("\n");
@@ -308,10 +313,21 @@ void rotate_charset() {
     }
 }
 
+// Initialize the printer
+void printer_init() {
+    epson_initialized = 1;
+    rotate_charset();
+    if (debug_enabled) print_stderr("Printer initialized.\n");
+    if (DEBUG) {
+        dump_charset();
+    }
+    printer_reset();
+}
+
 // Reset the printer
 void printer_reset() {
     if (!epson_initialized) {
-        print_stderr("Error: printer not initialized.\n");
+        fprintf(stderr, "Error: printer not initialized.\n");
         return;
     }
     // Restore default settings
@@ -340,24 +356,13 @@ void printer_reset() {
     ystep = 1.0;          // pc
     lstep = 1.0 / 6.0;    // in
     //
-    print_stderr("Printer reset.\n");
-}
-
-// Initialize the printer
-void printer_init() {
-    epson_initialized = 1;
-    rotate_charset();
-    print_stderr("Printer initialized.\n");
-    if (DEBUG) {
-        dump_charset();
-    }
-    printer_reset();
+    if (debug_enabled) print_stderr("Printer reset.\n");
 }
 
 // Get a character from the input file
 int file_get_char(FILE *fi) {
     if (!epson_initialized) {
-        print_stderr("Error: printer not initialized.\n");
+        fprintf(stderr, "Error: printer not initialized.\n");
         return EOF;
     }
     return fgetc(fi);
@@ -606,7 +611,7 @@ void process_ff() {
     // Create a new PDF page and reset the cursor to the top-left corner.
     // pdf_new_page uses page_width/page_height already defined.
     pdf_new_page();
-    print_stderr("Advanced to page %d\n", pdf_pages);
+    if (debug_enabled) print_stderr("Advanced to page %d\n", pdf_pages);
     xpos = page_xmargin;
     ypos = page_ymargin;
 }
@@ -626,7 +631,7 @@ void process_bs() {
 // Process a character
 int printer_process_char(int c) {
     if (!epson_initialized) {
-        print_stderr("Error: printer not initialized.\n");
+        fprintf(stderr, "Error: printer not initialized.\n");
         return 1;
     }
     if (c == EOF) {
@@ -689,10 +694,11 @@ int printer_process_char(int c) {
     return 0;
 }
 
-// Option to draw tractor edges (set via environment variable or by changing this flag)
+// Option flags available at runtime
 int draw_tractor_edges = 0;
 int draw_green_strips = 0;
 int wide_carriage = 0;
+int debug_enabled = 0; // when non-zero, print debug/info messages to stderr
 
 // (TRACTOR_* macros are defined earlier near declarations)
 
@@ -724,7 +730,7 @@ void pdf_draw_tractor_edges_page() {
             float h_band = band_h_in;
             if (y + h_band > page_height) h_band = page_height - y;
             pdf_appendf("%.3f %.3f %.3f %.3f re\nf\n", 0.0f, y * 72.0f, full_w_in * 72.0f, h_band * 72.0f);
-            // advance by two bands (green + white)
+            // advance to the next band (green + white)
             y += band_h_in * 2.0f;
         }
         // reset fill color to black
