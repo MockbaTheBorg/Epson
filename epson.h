@@ -269,23 +269,24 @@ void file_output(FILE *fo, const char *msg, ...) {
     va_end(args);
 }
 
-// Dump the charset to stderr as bitmap (for debugging)
+// Dump the charset to stdout as bitmap (for debugging)
 void dump_charset() {
     int index = 0;
     int c;
     for (int i = 0; i < 256; i++) {
+        printf("Char %3d (0x%02X):\n", i, i);
         for (int j = 0; j < 9; j++) {
             c = charset[index++];
             for (int k = 8; k >= 0; k--) {
                 if (c & (1 << k)) {
-                    print_stderr("#");
+                    printf("O");
                 } else {
-                    print_stderr("_");
+                    printf(".");
                 }
             }
-            print_stderr("\n");
+            printf("\n");
         }
-        print_stderr("\n");
+        printf("\n");
     }
 }
 
@@ -318,9 +319,6 @@ void printer_init() {
     epson_initialized = 1;
     rotate_charset();
     if (debug_enabled) print_stderr("Printer initialized.\n");
-    if (DEBUG) {
-        dump_charset();
-    }
     printer_reset();
 }
 
