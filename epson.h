@@ -639,6 +639,50 @@ int printer_process_char(int c) {
         return 1;
     }
 
+    // Translate certain UTF-8 characters to charset equivalents
+    if (c == 0xC3) { // UTF-8 prefix for accented characters
+        int c2 = file_get_char(fi);
+        if (c2 == EOF) return 1;
+
+        // Table-driven mapping for C3 xx codes
+        struct {
+            unsigned char code;
+            char base;
+            char accent;
+        } utf8_map[] = {
+            {0x81, 'A', '\''}, {0xA1, 'a', '\''}, // Á, á
+            {0x89, 'E', '\''}, {0xA9, 'e', '\''}, // É, é
+            {0x8D, 'I', '\''}, {0xAD, 'i', '\''}, // Í, í
+            {0x93, 'O', '\''}, {0xB3, 'o', '\''}, // Ó, ó
+            {0x9A, 'U', '\''}, {0xBA, 'u', '\''}, // Ú, ú
+            {0x80, 'A', '`'},  {0xA0, 'a', '`'},  // À, à
+            {0x88, 'E', '`'},  {0xA8, 'e', '`'},  // È, è
+            {0x8C, 'I', '`'},  {0xAC, 'i', '`'},  // Ì, ì
+            {0x92, 'O', '`'},  {0xB2, 'o', '`'},  // Ò, ò
+            {0x99, 'U', '`'},  {0xB9, 'u', '`'},  // Ù, ù
+            {0x83, 'A', '~'},  {0xA3, 'a', '~'},  // Ã, ã
+            {0x95, 'O', '~'},  {0xB5, 'o', '~'},  // Õ, õ
+            {0x82, 'A', '^'},  {0xA2, 'a', '^'},  // Â, â
+            {0x8A, 'E', '^'},  {0xAA, 'e', '^'},  // Ê, ê
+            {0x94, 'O', '^'},  {0xB4, 'o', '^'},  // Ô, ô
+            {0x87, 'C', ','},  {0xA7, 'c', ','},  // Ç, ç
+        };
+        int found = 0;
+        for (size_t i = 0; i < sizeof(utf8_map)/sizeof(utf8_map[0]); i++) {
+            if (c2 == utf8_map[i].code) {
+                printer_print_char(utf8_map[i].base);
+                process_bs();
+                printer_print_char(utf8_map[i].accent);
+                found = 1;
+                break;
+            }
+        }
+        if (!found) {
+            printer_print_char('?');
+        }
+        return 0;
+    }
+
     // Print the character
     if (c > 31) {
         print_stderr("%c", c);
