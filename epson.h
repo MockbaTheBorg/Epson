@@ -49,10 +49,172 @@ float ystep = 1.0;          // in
 float lstep = 0.0;          // in
 float yoffset = 0;          // in   (subscript/superscript)
 
-// SVG file definitions
-const char *svg_header = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\" standalone=\"no\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\" height=\"%.1fin\" width=\"%.1fin\" version=\"1.1\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" >\n";
-const char *svg_footer = "</svg>\n";
-const char *svg_line = "<circle cx=\"%.4fin\" cy=\"%.4fin\" r=\"%.1fpt\" style=\"stroke-width:0px; fill-opacity:%.1f; fill:black;\" />\n";
+// --- Lightweight multi-page PDF generation ---
+// We produce a small PDF with multiple pages. Dots are drawn as filled circles
+// approximated using four cubic Bezier curves.
+
+char **pdf_contents = NULL;   // per-page content buffers
+size_t *pdf_lens = NULL;
+size_t *pdf_caps = NULL;
+int pdf_pages = 0;
+
+void pdf_new_page() {
+    // add a new empty page buffer
+    int new_pages = pdf_pages + 1;
+    pdf_contents = (char**)realloc(pdf_contents, sizeof(char*) * new_pages);
+    pdf_lens = (size_t*)realloc(pdf_lens, sizeof(size_t) * new_pages);
+    pdf_caps = (size_t*)realloc(pdf_caps, sizeof(size_t) * new_pages);
+    // initialize new page buffer
+    pdf_contents[pdf_pages] = NULL;
+    pdf_caps[pdf_pages] = 0;
+    pdf_lens[pdf_pages] = 0;
+    // ensure a small initial capacity
+    pdf_caps[pdf_pages] = 8192;
+    pdf_contents[pdf_pages] = (char*)malloc(pdf_caps[pdf_pages]);
+    pdf_lens[pdf_pages] = 0;
+    pdf_pages = new_pages;
+}
+
+void pdf_ensure(size_t extra) {
+    if (pdf_pages == 0) pdf_new_page();
+    int idx = pdf_pages - 1;
+    if (pdf_contents[idx] == NULL) {
+        pdf_caps[idx] = 8192;
+        pdf_contents[idx] = (char*)malloc(pdf_caps[idx]);
+        pdf_lens[idx] = 0;
+    }
+    if (pdf_lens[idx] + extra + 1 > pdf_caps[idx]) {
+        while (pdf_lens[idx] + extra + 1 > pdf_caps[idx]) pdf_caps[idx] *= 2;
+        pdf_contents[idx] = (char*)realloc(pdf_contents[idx], pdf_caps[idx]);
+    }
+}
+
+void pdf_appendf(const char *fmt, ...) {
+    if (pdf_pages == 0) pdf_new_page();
+    int idx = pdf_pages - 1;
+    va_list args;
+    va_start(args, fmt);
+    va_list args2;
+    va_copy(args2, args);
+    int needed = vsnprintf(NULL, 0, fmt, args2);
+    va_end(args2);
+    if (needed < 0) needed = 0;
+    pdf_ensure((size_t)needed);
+    vsnprintf(pdf_contents[idx] + pdf_lens[idx], pdf_caps[idx] - pdf_lens[idx], fmt, args);
+    pdf_lens[idx] += (size_t)needed;
+    va_end(args);
+}
+
+void pdf_init() {
+    // free any existing pages
+    if (pdf_contents) {
+        for (int i = 0; i < pdf_pages; i++) {
+            free(pdf_contents[i]);
+        }
+        free(pdf_contents);
+        free(pdf_lens);
+        free(pdf_caps);
+    }
+    pdf_contents = NULL;
+    pdf_lens = NULL;
+    pdf_caps = NULL;
+    pdf_pages = 0;
+    // create first page
+    pdf_new_page();
+}
+
+// Draw a filled circle centered at (x_in inches, y_in inches) with radius in points.
+// We approximate circle with 4 cubic Bézier curves using kappa.
+void pdf_draw_dot_inch(float x_in, float y_in, float radius_pt) {
+    // Convert to points (72 pt = 1 in). PDF origin is bottom-left.
+    float cx = x_in * 72.0f;
+    float cy = page_height * 72.0f - (y_in * 72.0f);
+    float r = radius_pt;
+    const float k = 0.552284749831f; // approximation constant
+    float ox = r * k;
+    // Points for four segments
+    float x0 = cx + r; float y0 = cy;
+    float x1 = cx + r; float y1 = cy + ox;
+    float x2 = cx + ox; float y2 = cy + r;
+    float x3 = cx;     float y3 = cy + r;
+    float x4 = cx - ox; float y4 = cy + r;
+    float x5 = cx - r; float y5 = cy + ox;
+    float x6 = cx - r; float y6 = cy;
+    float x7 = cx - r; float y7 = cy - ox;
+    float x8 = cx - ox; float y8 = cy - r;
+    float x9 = cx;     float y9 = cy - r;
+    float x10 = cx + ox; float y10 = cy - r;
+    float x11 = cx + r; float y11 = cy - ox;
+    // Build path: move to x0,y0 then four 'c' operators
+    pdf_appendf("%.3f %.3f m\n", x0, y0);
+    pdf_appendf("%.3f %.3f %.3f %.3f %.3f %.3f c\n", x1, y1, x2, y2, x3, y3);
+    pdf_appendf("%.3f %.3f %.3f %.3f %.3f %.3f c\n", x4, y4, x5, y5, x6, y6);
+    pdf_appendf("%.3f %.3f %.3f %.3f %.3f %.3f c\n", x7, y7, x8, y8, x9, y9);
+    pdf_appendf("%.3f %.3f %.3f %.3f %.3f %.3f c\n", x10, y10, x11, y11, x0, y0);
+    pdf_appendf("f\n");
+}
+
+// Write the PDF file to the given FILE*
+void pdf_write(FILE *out) {
+    if (!out) return;
+    if (pdf_pages == 0) return;
+    // total objects: 1 Catalog + 1 Pages + 2 per page (Page obj + Content obj)
+    int totalObjs = 2 + (2 * pdf_pages);
+    long *offsets = (long*)malloc(sizeof(long) * (totalObjs + 1));
+    memset(offsets, 0, sizeof(long) * (totalObjs + 1));
+
+    // Header
+    offsets[0] = ftell(out);
+    fprintf(out, "%%PDF-1.1\n%%\xFF\xFF\xFF\xFF\n");
+
+    // 1 0 obj Catalog
+    offsets[1] = ftell(out);
+    fprintf(out, "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+
+    // 2 0 obj Pages
+    offsets[2] = ftell(out);
+    fprintf(out, "2 0 obj\n<< /Type /Pages /Kids [");
+    // list page object references
+    for (int i = 0; i < pdf_pages; i++) {
+        int pageObjId = 3 + i * 2;
+        fprintf(out, "%d 0 R ", pageObjId);
+    }
+    fprintf(out, "] /Count %d >>\nendobj\n", pdf_pages);
+
+    // Write each Page object (reserve IDs)
+    for (int i = 0; i < pdf_pages; i++) {
+        int pageObjId = 3 + i * 2;
+        int contentObjId = 4 + i * 2;
+        offsets[pageObjId] = ftell(out);
+        float w_pt = page_width * 72.0f;
+        float h_pt = page_height * 72.0f;
+        fprintf(out, "%d 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %.3f %.3f] /Contents %d 0 R /Resources << >> >>\nendobj\n", pageObjId, w_pt, h_pt, contentObjId);
+    }
+
+    // Write each Content object (stream)
+    for (int i = 0; i < pdf_pages; i++) {
+        int contentObjId = 4 + i * 2;
+        offsets[contentObjId] = ftell(out);
+        fprintf(out, "%d 0 obj\n<< /Length %zu >>\nstream\n", contentObjId, pdf_lens[i]);
+        if (pdf_lens[i] > 0) {
+            fwrite(pdf_contents[i], 1, pdf_lens[i], out);
+        }
+        fprintf(out, "\nendstream\nendobj\n");
+    }
+
+    // xref
+    long xref_pos = ftell(out);
+    fprintf(out, "xref\n0 %d\n0000000000 65535 f \n", totalObjs + 1);
+    for (int i = 1; i <= totalObjs; i++) {
+        // If offsets entry is zero (shouldn't), print zeros
+        fprintf(out, "%010ld 00000 n \n", offsets[i]);
+    }
+
+    // trailer
+    fprintf(out, "trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%ld\n%%%%EOF\n", totalObjs + 1, xref_pos);
+
+    free(offsets);
+}
 
 // Is the printer initialized?
 int epson_initialized = 0;
@@ -180,7 +342,8 @@ void printer_print_column(int c) {
     float adj = 1.0 / 72.0 * 0.5;
     for (int i = 0; i < 9; i++) {
         if (c & (1 << i)) {
-            file_output(fo, svg_line, xpos + adj, ypos + yoffset + adj + (i * ys), DOT_RADIUS, DOT_OPACITY);
+            // Draw a small filled rectangle for each dot in the PDF content stream
+            pdf_draw_dot_inch(xpos + adj, ypos + yoffset + adj + (i * ys), DOT_RADIUS);
         }
     }
 }
@@ -400,19 +563,10 @@ int printer_process_escape() {
 
 // Process form feed
 void process_ff() {
-    // if 'page' > 1, close the current file, then open a new one and reset the cursor to the top left corner
-    if (page > 1) {
-        file_output(fo, svg_footer);
-        fclose(fo);
-        sprintf(pagename, "page_%03d.svg", page);
-        page++;
-        fo = fopen(pagename, "w");
-        if (fo == NULL) {
-            fprintf(stderr, "Error opening file %s\n", pagename);
-            exit(1);
-        }
-        file_output(fo, svg_header, page_height, page_width);
-    }
+    // Create a new PDF page and reset the cursor to the top-left corner.
+    // pdf_new_page uses page_width/page_height already defined.
+    pdf_new_page();
+    print_stderr("Advanced to page %d\n", pdf_pages);
     xpos = page_xmargin;
     ypos = page_ymargin;
 }
