@@ -6,9 +6,11 @@
 
 // Printer page settings (defaults)
 #define PAGE_WIDTH 8.5      // in
+#define WIDE_WIDTH 13.875   // in
 #define PAGE_HEIGHT 11.0    // in
 #define PAGE_CPI 10         // cpi
 #define PAGE_LPI 6          // lpi
+#define PAGE_LINES ((int)(PAGE_HEIGHT * PAGE_LPI))  // 66 lines per page
 #define PAGE_XMARGIN 0.0    // in
 #define PAGE_YMARGIN 0.0    // in
 
@@ -38,6 +40,9 @@ int page_cpi = PAGE_CPI;
 int page_lpi = PAGE_LPI;
 float page_xmargin = PAGE_XMARGIN;
 float page_ymargin = PAGE_YMARGIN;
+
+// Line counter for automatic pagination
+int line_count = 0;
 
 // Page cursor position
 float xpos = PAGE_XMARGIN;
@@ -331,8 +336,7 @@ void printer_reset() {
     // Restore default settings
     // Respect wide_carriage: if set, keep wide printable page_width
     if (wide_carriage) {
-        // wide carriage printable width in inches
-        page_width = 13.875f;
+        page_width = WIDE_WIDTH;
     } else {
         page_width = PAGE_WIDTH;
     }
@@ -348,12 +352,13 @@ void printer_reset() {
     mode_wide = 0;
     mode_wide1line = 0;
     //
-    step60 = 1.0 / 60.0;    // in (1 pc = 1/6 in)
+    step60 = 1.0 / 52.9;    // in (1 pc = 1/6 in)
     step72 = 1.0 / 72.0;    // in (1 pt = 1/72 in)
-    xstep = 0.5;          // pc
-    ystep = 1.0;          // pc
+    xstep = 0.5;            // pc
+    ystep = 1.0;          // in
     lstep = 1.0 / 6.0;    // in
     //
+    line_count = 0;  // Initialize line count
     if (debug_enabled) print_stderr("Printer reset.\n");
 }
 
@@ -369,7 +374,7 @@ int file_get_char(FILE *fi) {
 // Print one column of a character
 void printer_print_column(int c) {
     float ys = ystep * step72;
-    float adj = 1.0 / 72.0 * 0.5;
+    float adj = step72 * 0.5;
     // if tractor edges are present, printable area is offset from left by tractor strip width
     float x_offset_in = draw_tractor_edges ? TRACTOR_WIDTH_IN : 0.0f;
     // Printable area bounds (in inches)
@@ -397,7 +402,7 @@ void printer_print_char(int c) {
         c += 128;
     int index = c * 9;
     int lc = 0;
-    float xs = xstep * step60;
+    float xs = xstep * step60; // xs is in inches per dot column (1/120 in at 10 cpi)
     float xhs = xs / 2;
     float xds = xs * 2;
     float ys = ystep * step72;
@@ -612,6 +617,7 @@ void process_ff() {
     if (debug_enabled) print_stderr("Advanced to page %d\n", pdf_pages);
     xpos = page_xmargin;
     ypos = page_ymargin;
+    line_count = 0;  // Reset line count on new page
 }
 
 // Process backspace
@@ -702,6 +708,10 @@ int printer_process_char(int c) {
             ypos += lstep;
             if (auto_cr)
                 xpos = page_xmargin;
+            line_count++;
+            if (line_count >= PAGE_LINES) {
+                process_ff();
+            }
             break;
         case 12:    // FF
             print_stderr("\n");
