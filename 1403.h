@@ -30,6 +30,9 @@ extern int page_lpi;
 extern float page_xmargin;
 extern float page_ymargin;
 
+// Wrapping behavior: when set, long lines wrap to next line; otherwise extra chars are discarded
+extern int wrap_enabled;
+
 // Line counter for automatic pagination
 extern int line_count;
 
@@ -119,10 +122,32 @@ int file_get_char(FILE *fi) {
 void printer_print_char(int c) {
     // Determine font based on modes
     int font_id = 1; // Courier
+    // Determine character width (account for wide modes)
+    float char_width = 1.0f / page_cpi; // inches per character based on page_cpi
+
+    // If printing this character would go past the printable right edge, wrap to next line
+    float right_edge = page_xmargin + page_width;
+    if (xpos + char_width > right_edge - 1e-6f) {
+        if (wrap_enabled) {
+            // advance to next line (like LF)
+            ypos += 1.0f / page_lpi;
+            xpos = page_xmargin;
+            line_count++;
+            if (ypos >= page_height || line_count >= PAGE_LINES) {
+                pdf_new_page();
+                ypos = page_ymargin;
+                xpos = page_xmargin;
+                line_count = 0;
+            }
+        } else {
+            // Discard character (do not draw or advance)
+            return;
+        }
+    }
+
     // Draw the character
     pdf_draw_char(xpos, ypos, font_id, (char)c);
     // Advance cursor
-    float char_width = 0.125f; // 10 cpi
     xpos += char_width;
 }
 

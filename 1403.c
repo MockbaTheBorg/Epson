@@ -16,6 +16,7 @@ int draw_tractor_edges = 0;
 int draw_green_strips = 0;
 int wide_carriage = 0;
 int debug_enabled = 0;
+int wrap_enabled = 0; // default: do not wrap
 float page_width = PAGE_WIDTH;
 float page_height = PAGE_HEIGHT;
 int page_cpi = PAGE_CPI;
@@ -51,6 +52,7 @@ static void print_usage(const char *prog)
     fprintf(stderr, "  -o, --output F   Write PDF to file F (otherwise to stdout)\n");
     fprintf(stderr, "  -w, --wide       Use wide/legal carriage sizes (13.875in printable)\n");
     fprintf(stderr, "  -s, --stdin      Read input from standard input (takes precedence)\n");
+    fprintf(stderr, "  -r, --wrap       Wrap long lines to next line instead of discarding\n");
     fprintf(stderr, "  -f, --font F     Specify font to use (default: printer.ttf)\n");
     fprintf(stderr, "  -d, --debug      Enable debug messages\n");
     fprintf(stderr, "  -h, --help       Show this help\n");
@@ -119,6 +121,7 @@ int main(int argc, char *argv[])
         {"green", no_argument, 0, 'g'},
         {"output", required_argument, 0, 'o'},
         {"wide", no_argument, 0, 'w'},
+        {"wrap", no_argument, 0, 'r'},
         {"stdin", no_argument, 0, 's'},
         {"font", required_argument, 0, 'f'},
         {"debug", no_argument, 0, 'd'},
@@ -145,6 +148,9 @@ int main(int argc, char *argv[])
             break;
         case 's':
             opt_stdin = 1;
+            break;
+        case 'r':
+            wrap_enabled = 1;
             break;
         case 'f':
             opt_font = strdup(optarg);
