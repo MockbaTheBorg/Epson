@@ -17,10 +17,10 @@ extern int debug_enabled;
 #define PAGE_LPI 6          // lpi
 #define PAGE_LINES ((int)(PAGE_HEIGHT * PAGE_LPI))  // 66 lines per page
 #define PAGE_XMARGIN 0.0    // in
-#define PAGE_YMARGIN 0.0    // in
+#define PAGE_YMARGIN 0.025  // in
 
 // Number of columns per tab stop (default 8)
-#define TAB_STOPS 4
+#define TAB_STOPS 8
 
 // Printer dot
 #define DOT_RADIUS 0.5      // pt

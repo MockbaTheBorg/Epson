@@ -17,7 +17,7 @@
 #define PAGE_YMARGIN 0.0    // in
 
 // Number of columns per tab stop (default 8)
-#define TAB_STOPS 4
+#define TAB_STOPS 8
 
 // Printer flags
 int auto_cr = 1;
