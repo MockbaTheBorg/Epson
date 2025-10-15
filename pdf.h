@@ -16,7 +16,7 @@ extern float page_height;
 #define TRACTOR_WIDTH_IN 0.5f                 // width of each tractor strip (inches)
 #define TRACTOR_HOLE_SPACING_IN 0.5f          // spacing between holes (inches)
 #define TRACTOR_HOLE_MARGIN_IN 0.25f          // margin from edge to first hole (inches)
-#define TRACTOR_HOLE_RADIUS_PT 7.0f           // radius of tractor holes (points)
+#define TRACTOR_HOLE_RADIUS_PT 5.625f         // radius of tractor holes (points) (5/32" diameter => 0.078125in radius => 5.625pt)
 
 void pdf_draw_tractor_edges_page(void);
 int pdf_load_font(const char *font_file_path);
