@@ -173,9 +173,9 @@ void pdf_draw_dot_inch(float x_in, float y_in, float radius_pt) {
 
 // Draw a character at (x_in inches, y_in inches) using font_id (1=normal, 2=bold, 3=italic)
 void pdf_draw_char(float x_in, float y_in, int font_id, char c) {
-    // Add tractor offset if enabled
+    // Add tractor offset if enabled, but move left by 0.1 inches
     float x_offset_in = draw_tractor_edges ? TRACTOR_WIDTH_IN : 0.0f;
-    x_in += x_offset_in;
+    x_in += x_offset_in - 0.075f;
     // Convert to points (72 pt = 1 in). PDF origin is bottom-left.
     float x_pt = x_in * 72.0f;
     float y_pt = page_height * 72.0f - (y_in * 72.0f) - 12.0f; // baseline 12 pt below top
@@ -359,7 +359,7 @@ void printer_print_char(int c) {
     // Draw the character
     pdf_draw_char(xpos, ypos, font_id, (char)c);
     // Advance cursor
-    float char_width = 0.124f; // 10 cpi
+    float char_width = 0.125f; // 10 cpi
     xpos += char_width;
 }
 
