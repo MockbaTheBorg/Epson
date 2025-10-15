@@ -16,6 +16,9 @@
 #define PAGE_XMARGIN 0.0    // in
 #define PAGE_YMARGIN 0.0    // in
 
+// Number of columns per tab stop (default 8)
+#define TAB_STOPS 4
+
 // Printer flags
 int auto_cr = 1;
 
@@ -150,10 +153,10 @@ int hammer_process_char(int c) {
     switch (c) {
         case 9:     // HT (Horizontal Tab)
             {
-                // Tab stops at every 8 characters (standard)
+                // Tab stops at every TAB_STOPS characters (standard)
                 float char_width = 1.0f / page_cpi; // width of one character in inches
                 float current_col = (xpos - page_xmargin) / char_width;
-                int next_tab_stop = ((int)(current_col / 8) + 1) * 8;
+                int next_tab_stop = ((int)(current_col / TAB_STOPS) + 1) * TAB_STOPS;
                 xpos = page_xmargin + (next_tab_stop * char_width);
                 // Don't go past right margin
                 if (xpos > page_width) {

@@ -19,6 +19,9 @@ extern int debug_enabled;
 #define PAGE_XMARGIN 0.0    // in
 #define PAGE_YMARGIN 0.0    // in
 
+// Number of columns per tab stop (default 8)
+#define TAB_STOPS 4
+
 // Printer dot
 #define DOT_RADIUS 0.5      // pt
 #define DOT_OPACITY 0.5     // 0.0 to 1.0
@@ -548,14 +551,14 @@ int printer_process_char(int c) {
             break;
         case 9:     // HT (Horizontal Tab)
             {
-                // Tab stops at every 8 characters (standard for Epson printers)
+                // Tab stops at every TAB_STOPS characters (standard for Epson printers)
                 float xs = xstep * step60; // width per dot column
                 float char_width = xs * 12.0; // width of one character (12 dot columns)
                 if (mode_wide || mode_wide1line) {
                     char_width = xs * 24.0; // double width
                 }
                 float current_col = (xpos - page_xmargin) / char_width;
-                int next_tab_stop = ((int)(current_col / 8) + 1) * 8;
+                int next_tab_stop = ((int)(current_col / TAB_STOPS) + 1) * TAB_STOPS;
                 xpos = page_xmargin + (next_tab_stop * char_width);
                 // Don't go past right margin
                 if (xpos > page_xmargin + page_width) {
