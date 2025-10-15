@@ -27,40 +27,40 @@ extern int debug_enabled;
 #define DOT_OPACITY 0.5     // 0.0 to 1.0
 
 // Printer flags
-int auto_cr = 1;
+extern int auto_cr;
 
 // Printer modes
-int mode_bold = 0;
-int mode_italic = 0;
-int mode_doublestrike = 0;
-int mode_wide = 0;
-int mode_wide1line = 0;
-int mode_subscript = 0;
-int mode_superscript = 0;
-int mode_compressed = 0;
-int mode_elite = 0;
-int mode_underline = 0;
+extern int mode_bold;
+extern int mode_italic;
+extern int mode_doublestrike;
+extern int mode_wide;
+extern int mode_wide1line;
+extern int mode_subscript;
+extern int mode_superscript;
+extern int mode_compressed;
+extern int mode_elite;
+extern int mode_underline;
 
 // Global printer variables
-float page_width = PAGE_WIDTH;
-float page_height = PAGE_HEIGHT;
-int page_cpi = PAGE_CPI;
-int page_lpi = PAGE_LPI;
-float page_xmargin = PAGE_XMARGIN;
-float page_ymargin = PAGE_YMARGIN;
+extern float page_width;
+extern float page_height;
+extern int page_cpi;
+extern int page_lpi;
+extern float page_xmargin;
+extern float page_ymargin;
 
 // Line counter for automatic pagination
-int line_count = 0;
+extern int line_count;
 
 // Page cursor position
-float xpos = PAGE_XMARGIN;
-float ypos = PAGE_YMARGIN;
-float step60 = 0.0;         // in
-float step72 = 0.0;         // in
-float xstep = 0.5;          // in
-float ystep = 1.0;          // in
-float lstep = 0.0;          // in
-float yoffset = 0;          // in   (subscript/superscript)
+extern float xpos;
+extern float ypos;
+extern float step60;         // in
+extern float step72;         // in
+extern float xstep;          // in
+extern float ystep;          // in
+extern float lstep;          // in
+extern float yoffset;        // in   (subscript/superscript)
 
 // Forward declarations for tractor-edge option (defined later)
 extern int draw_tractor_edges;

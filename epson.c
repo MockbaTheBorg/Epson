@@ -14,8 +14,8 @@ int draw_tractor_edges = 0;
 int draw_green_strips = 0;
 int wide_carriage = 0;
 int debug_enabled = 0;
-float page_width;
-float page_height;
+float page_width = PAGE_WIDTH;
+float page_height = PAGE_HEIGHT;
 char **pdf_contents = NULL;
 size_t *pdf_lens = NULL;
 size_t *pdf_caps = NULL;
@@ -23,14 +23,30 @@ int pdf_pages = 0;
 
 // Printer charset (9x9 bitmaps for 256 characters)
 int charset[256*9];
+// Input file (defined below with other globals)
+// Printer state variables (defined below)
+// Printer state variables (definitions)
+int auto_cr = 1;
+int mode_bold = 0;
+int mode_italic = 0;
+int mode_doublestrike = 0;
+int mode_wide = 0;
+int mode_wide1line = 0;
+int mode_subscript = 0;
+int mode_superscript = 0;
+int mode_compressed = 0;
+int mode_elite = 0;
+int mode_underline = 0;
 
-// Input file
-FILE *fi;
-
-// Printer state variables
-float xpos, ypos, xstep, ystep, lstep, yoffset;
-int mode_bold, mode_italic, mode_doublestrike, mode_wide, mode_wide1line, mode_underline, mode_subscript, mode_superscript, mode_elite, mode_compressed;
-int line_count;
+float xpos = PAGE_XMARGIN;
+float ypos = PAGE_YMARGIN;
+float step60 = 0.0;         // in
+float step72 = 0.0;         // in
+float xstep = 0.5;          // in
+float ystep = 1.0;          // in
+float lstep = 0.0;          // in
+float yoffset = 0;          // in   (subscript/superscript)
+int line_count = 0;
 
 static void print_usage(const char *prog)
 {
