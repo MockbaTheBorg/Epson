@@ -50,7 +50,9 @@ static void print_usage(const char *prog)
 {
     fprintf(stderr, "Usage: %s [options] <inputfile>\n", prog);
     fprintf(stderr, "  -e, --edge       Add perforated tractor edges (0.5in each side)\n");
-    fprintf(stderr, "  -g, --guides     Add green guide strips\n");
+    fprintf(stderr, "  -g, --guides     Add guide strips (green by default)\n");
+    fprintf(stderr, "  -1, --single     Draw guide bands every 1 line instead of the default\n");
+    fprintf(stderr, "  -b, --blue       Draw guide bands in blue instead of green\n");
     fprintf(stderr, "  -o, --output F   Write PDF to file F (otherwise to stdout)\n");
     fprintf(stderr, "  -w, --wide       Use wide/legal carriage sizes (13.875in printable)\n");
     fprintf(stderr, "  -s, --stdin      Read input from standard input (takes precedence)\n");
