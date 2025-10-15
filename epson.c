@@ -11,7 +11,9 @@
 
 // Global variables
 int draw_tractor_edges = 0;
-int draw_green_strips = 0;
+int draw_guide_strips = 0;
+int guide_single_line = 0;
+int green_blue = 0;
 int wide_carriage = 0;
 int debug_enabled = 0;
 float page_width = PAGE_WIDTH;
@@ -56,7 +58,7 @@ static void print_usage(const char *prog)
 {
     fprintf(stderr, "Usage: %s [options] <inputfile>\n", prog);
     fprintf(stderr, "  -e, --edge       Add perforated tractor edges (0.5in each side)\n");
-    fprintf(stderr, "  -g, --green      Add green guide strips\n");
+    fprintf(stderr, "  -g, --guides     Add green guide strips\n");
     fprintf(stderr, "  -o, --output F   Write PDF to file F (otherwise to stdout)\n");
     fprintf(stderr, "  -w, --wide       Use wide/legal carriage sizes (13.875in printable)\n");
     fprintf(stderr, "  -s, --stdin      Read input from standard input (takes precedence)\n");
@@ -87,7 +89,9 @@ int main(int argc, char *argv[])
     char *filename;
     char *outname = NULL;
     int opt_edge = 0;
-    int opt_green = 0;
+    int opt_guides = 0;
+    int opt_single = 0;
+    int opt_blue = 0;
     int opt_wide = 0;
     int opt_stdin = 0;
     int opt_charset = 0;
@@ -95,7 +99,9 @@ int main(int argc, char *argv[])
     // Parse command line options
     static struct option long_options[] = {
         {"edge", no_argument, 0, 'e'},
-        {"green", no_argument, 0, 'g'},
+        {"guides", no_argument, 0, 'g'},
+        {"single", no_argument, 0, '1'},
+        {"blue", no_argument, 0, 'b'},
         {"output", required_argument, 0, 'o'},
         {"wide", no_argument, 0, 'w'},
         {"stdin", no_argument, 0, 's'},
@@ -106,7 +112,7 @@ int main(int argc, char *argv[])
     int opt;
     int opt_index = 0;
     // getopt loop: options come before the input filename
-    while ((opt = getopt_long(argc, argv, "ego:wscdh", long_options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "eg1bo:wscdh", long_options, &opt_index)) != -1)
     {
         switch (opt)
         {
@@ -114,7 +120,13 @@ int main(int argc, char *argv[])
             opt_edge = 1;
             break;
         case 'g':
-            opt_green = 1;
+            opt_guides = 1;
+            break;
+        case '1':
+            opt_single = 1;
+            break;
+        case 'b':
+            opt_blue = 1;
             break;
         case 'o':
             outname = strdup(optarg);
@@ -215,10 +227,18 @@ int main(int argc, char *argv[])
         print_stderr("Tractor edges enabled.\n");
     }
 
-    if (opt_green)
+    if (opt_guides)
     {
-        draw_green_strips = 1;
+        draw_guide_strips = 1;
         print_stderr("Green guide strips enabled.\n");
+        if (opt_single) {
+            guide_single_line = 1;
+            print_stderr("Green guide strips: single-line mode enabled.\n");
+        }
+        if (opt_blue) {
+            green_blue = 1;
+            print_stderr("Guide strips set to blue (overrides green).\n");
+        }
     }
 
     if (opt_wide)

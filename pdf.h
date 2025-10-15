@@ -8,9 +8,12 @@
 
 // External declarations
 extern int draw_tractor_edges;
-extern int draw_green_strips;
+extern int draw_guide_strips;
+extern int guide_single_line;
+extern int green_blue;
 extern float page_width;
 extern float page_height;
+extern int page_lpi;
 
 // Tractor constants
 #define TRACTOR_WIDTH_IN 0.5f                 // width of each tractor strip (inches)
@@ -53,7 +56,7 @@ void pdf_new_page() {
     pdf_pages = new_pages;
 
     // If requested, draw tractor edges or green background immediately on the new page so they appear under dots
-    if (draw_tractor_edges || draw_green_strips) {
+    if (draw_tractor_edges || draw_guide_strips) {
         // the drawing routines append to the current page buffer
         pdf_draw_tractor_edges_page();
     }
@@ -301,7 +304,7 @@ void pdf_write(FILE *out) {
 }
 
 void pdf_draw_tractor_edges_page() {
-    if (!draw_tractor_edges && !draw_green_strips) return;
+    if (!draw_tractor_edges && !draw_guide_strips) return;
     // calculate in points
     float tw = TRACTOR_WIDTH_IN;
     // full_width should be printable page_width + tractor strips (only if enabled)
@@ -313,21 +316,30 @@ void pdf_draw_tractor_edges_page() {
     float seam_left_in = (tw - seam_offset_in); // inches from left edge
     float seam_right_in = (full_width - tw + seam_offset_in); // inches from left edge for right side
 
-    // If green strips requested, draw them across the full paper width.
-    if (draw_green_strips) {
-        // Draw alternating horizontal green bands across the full paper width.
-        // Standard band height: 0.5 in (matches 6 LPI -> 6 lines per inch). Bands alternate green/white.
-        float band_h_in = 0.5f; // inches
+    // If guide strips requested, draw them across the full paper width.
+    if (draw_guide_strips) {
+        // Draw alternating horizontal bands across the full paper width.
+        // If single-line mode requested, band height is one line (1.0 / page_lpi inches).
+        float band_h_in = 0.5f; // default inches (approx 6 LPI)
+        if (guide_single_line && page_lpi > 0) {
+            band_h_in = 1.0f / (float)page_lpi;
+        }
         float full_w_in = full_width; // inches
         float y = 0.0f;
-        // set fill color to a soft green (use RGB 0.85 1 0.85 for light green)
-        pdf_appendf("0.85 1 0.85 rg\n");
+        // choose color: blue overrides green
+        if (green_blue) {
+            // soft blue
+            pdf_appendf("0.85 0.85 1.0 rg\n");
+        } else {
+            // soft green
+            pdf_appendf("0.85 1 0.85 rg\n");
+        }
         while (y < page_height - 1e-6f) {
-            // draw a green band from y to y+band_h_in
+            // draw a band from y to y+band_h_in
             float h_band = band_h_in;
             if (y + h_band > page_height) h_band = page_height - y;
             pdf_appendf("%.3f %.3f %.3f %.3f re\nf\n", 0.0f, y * 72.0f, full_w_in * 72.0f, h_band * 72.0f);
-            // advance to the next band (green + white)
+            // advance to the next band (band + white)
             y += band_h_in * 2.0f;
         }
         // reset fill color to black
