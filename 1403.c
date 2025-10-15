@@ -7,7 +7,7 @@
 #include <getopt.h>
 #include <unistd.h>
 #include <libgen.h>
-#include <linux/limits.h>
+#include <limits.h>
 
 #include "1403.h"
 

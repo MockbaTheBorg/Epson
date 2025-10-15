@@ -6,9 +6,6 @@
 // Global program settings
 #define DEBUG 0
 
-extern int wide_carriage;
-extern int debug_enabled;
-
 // Printer page settings (defaults)
 #define PAGE_WIDTH 8.5      // in
 #define WIDE_WIDTH 13.875   // in

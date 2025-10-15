@@ -19,8 +19,13 @@
 // Number of columns per tab stop (default 8)
 #define TAB_STOPS 8
 
+// Path maximum length
+#ifndef PATH_MAX
+    #define PATH_MAX 4096
+#endif
+
 // Printer flags
-int auto_cr = 1;
+extern int auto_cr;
 
 // Global printer variables
 extern float page_width;
@@ -55,14 +60,17 @@ extern int wide_carriage;
 extern int debug_enabled; // forward decl for debug flag
 void pdf_draw_tractor_edges_page(void);
 void printer_reset(void);
+
 // Vintage emulation
 extern int vintage_enabled;
 void vintage_init(unsigned int seed);
+
 // Vintage arrays (defined in 1403.c)
 extern float *vintage_col_intensity;
 extern int vintage_cols;
 extern float vintage_char_xoff[127];
 extern float vintage_char_yoff[127];
+
 // Current intensity used by pdf drawing (1.0 = full black)
 extern float vintage_current_intensity;
 
