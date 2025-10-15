@@ -324,7 +324,10 @@ void pdf_draw_tractor_edges_page() {
         if (guide_single_line && page_lpi > 0) {
             band_h_in = 1.0f / (float)page_lpi;
         }
-        float full_w_in = full_width; // inches
+        // Draw bands only inside the printable area. If tractor strips are enabled,
+        // offset drawing by the tractor strip width so the tractor margins remain white.
+        float x_offset_in = draw_tractor_edges ? tw : 0.0f;
+        float full_w_in = page_width; // width of printable area in inches
         float y = 0.0f;
         // choose color: blue overrides green
         if (green_blue) {
@@ -338,7 +341,8 @@ void pdf_draw_tractor_edges_page() {
             // draw a band from y to y+band_h_in
             float h_band = band_h_in;
             if (y + h_band > page_height) h_band = page_height - y;
-            pdf_appendf("%.3f %.3f %.3f %.3f re\nf\n", 0.0f, y * 72.0f, full_w_in * 72.0f, h_band * 72.0f);
+            // x offset ensures guide bands do not cover tractor edges
+            pdf_appendf("%.3f %.3f %.3f %.3f re\nf\n", x_offset_in * 72.0f, y * 72.0f, full_w_in * 72.0f, h_band * 72.0f);
             // advance to the next band (band + white)
             y += band_h_in * 2.0f;
         }
