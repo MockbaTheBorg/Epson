@@ -55,6 +55,16 @@ extern int wide_carriage;
 extern int debug_enabled; // forward decl for debug flag
 void pdf_draw_tractor_edges_page(void);
 void printer_reset(void);
+// Vintage emulation
+extern int vintage_enabled;
+void vintage_init(unsigned int seed);
+// Vintage arrays (defined in 1403.c)
+extern float *vintage_col_intensity;
+extern int vintage_cols;
+extern float vintage_char_xoff[127];
+extern float vintage_char_yoff[127];
+// Current intensity used by pdf drawing (1.0 = full black)
+extern float vintage_current_intensity;
 
 // Define an array with the names of control characters from 0 to 31
 const char *control_names[] = {
@@ -145,8 +155,29 @@ void printer_print_char(int c) {
         }
     }
 
-    // Draw the character
-    pdf_draw_char(xpos, ypos, font_id, (char)c);
+    // Determine vintage adjustments if enabled
+    float draw_x = xpos;
+    float draw_y = ypos;
+    if (vintage_enabled) {
+        // compute column index (0-based)
+        int col = (int)((xpos - page_xmargin) / char_width + 0.001f);
+        if (col < 0) col = 0;
+        if (vintage_cols > 0 && col >= vintage_cols) col = vintage_cols - 1;
+        // set current intensity for pdf drawing
+        if (vintage_col_intensity && vintage_cols > 0) {
+            vintage_current_intensity = vintage_col_intensity[col];
+        } else {
+            vintage_current_intensity = 1.0f;
+        }
+        // per-character deterministic misalignment (in inches)
+        if (c >= 0 && c < 127) {
+            draw_x += vintage_char_xoff[c];
+            draw_y += vintage_char_yoff[c];
+        }
+    }
+
+    // Draw the character (with any vintage adjustments applied)
+    pdf_draw_char(draw_x, draw_y, font_id, (char)c);
     // Advance cursor
     xpos += char_width;
 }

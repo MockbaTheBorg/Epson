@@ -14,6 +14,9 @@ extern int green_blue;
 extern float page_width;
 extern float page_height;
 extern int page_lpi;
+// Vintage emulation: current intensity multiplier (1.0 = normal)
+extern int vintage_enabled;
+extern float vintage_current_intensity;
 
 // Tractor constants
 #define TRACTOR_WIDTH_IN 0.5f                 // width of each tractor strip (inches)
@@ -188,11 +191,23 @@ void pdf_draw_char(float x_in, float y_in, int font_id, char c) {
     float cy = page_height * 72.0f - (y_in * 72.0f) - top_margin_pt;
     // Use the embedded font at a fixed size (10pt for 10 CPI)
     float font_size_pt = 12.0f;
+    // If vintage emulation is enabled, set a gray color based on intensity
+    if (vintage_enabled) {
+        float v = vintage_current_intensity;
+        if (v < 0.0f) v = 0.0f;
+        if (v > 1.0f) v = 1.0f;
+        float col = 1.0f - v; // 0=black, 1=white
+        pdf_appendf("%.3f %.3f %.3f rg\n", col, col, col);
+    }
     // Escape special PDF characters that have meaning inside parentheses strings
     if (c == '(' || c == ')' || c == '\\') {
         pdf_appendf("BT /F1 %.1f Tf %.3f %.3f Td (\\%c) Tj ET\n", font_size_pt, cx, cy, c);
     } else {
         pdf_appendf("BT /F1 %.1f Tf %.3f %.3f Td (%c) Tj ET\n", font_size_pt, cx, cy, c);
+    }
+    // Reset fill color back to black for subsequent drawing (if vintage altered it)
+    if (vintage_enabled) {
+        pdf_appendf("0 0 0 rg\n");
     }
 }
 
