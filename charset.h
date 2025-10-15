@@ -1,14 +1,6 @@
 #ifndef CHARSET_H
 #define CHARSET_H
 
-// Define an array with the names of control characters from 0 to 31
-const char *control_names[] = {
-    "NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL",
-    "BS", "HT", "LF", "VT", "FF", "CR", "SO", "SI",
-    "DLE", "DC1", "DC2", "DC3", "DC4", "NAK", "SYN", "ETB",
-    "CAN", "EM", "SUB", "ESC", "FS", "GS", "RS", "US"
-};
-
 // Define an array with the charset in binary format
 int charset[] = {
     0b000100000,

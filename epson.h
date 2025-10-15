@@ -69,6 +69,14 @@ void printer_reset(void);
 // Hole diameter 5/32" => radius in points: (0.15625 * 72) / 2 = 5.625 pt
 #define TRACTOR_HOLE_RADIUS_PT 5.625f
 
+// Define an array with the names of control characters from 0 to 31
+const char *control_names[] = {
+    "NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL",
+    "BS", "HT", "LF", "VT", "FF", "CR", "SO", "SI",
+    "DLE", "DC1", "DC2", "DC3", "DC4", "NAK", "SYN", "ETB",
+    "CAN", "EM", "SUB", "ESC", "FS", "GS", "RS", "US"
+};
+
 // --- Lightweight multi-page PDF generation ---
 // We produce a small PDF with multiple pages. Dots are drawn as filled circles
 // approximated using four cubic Bezier curves.
