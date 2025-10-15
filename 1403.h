@@ -359,7 +359,7 @@ void printer_print_char(int c) {
     // Draw the character
     pdf_draw_char(xpos, ypos, font_id, (char)c);
     // Advance cursor
-    float char_width = 0.1f; // 10 cpi
+    float char_width = 0.124f; // 10 cpi
     xpos += char_width;
 }
 
