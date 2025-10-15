@@ -6,6 +6,42 @@
 #include <ctype.h>
 #include <getopt.h>
 #include <unistd.h>
+#include <libgen.h>
+#include <linux/limits.h>
+
+#include "1403.h"
+
+// Global variables
+int draw_tractor_edges = 0;
+int draw_green_strips = 0;
+int wide_carriage = 0;
+int debug_enabled = 0;
+float page_width = PAGE_WIDTH;
+float page_height = PAGE_HEIGHT;
+int page_cpi = PAGE_CPI;
+int page_lpi = PAGE_LPI;
+float page_xmargin = PAGE_XMARGIN;
+float page_ymargin = PAGE_YMARGIN;
+int line_count = 0;
+float xpos = PAGE_XMARGIN;
+float ypos = PAGE_YMARGIN;
+float xstep = 0.5;
+float ystep = 1.0;
+int mode_bold = 0;
+int mode_italic = 0;
+int mode_doublestrike = 0;
+int mode_wide = 0;
+int mode_wide1line = 0;
+int mode_underline = 0;
+int mode_subscript = 0;
+int mode_superscript = 0;
+int mode_elite = 0;
+int mode_compressed = 0;
+FILE *fi;
+char **pdf_contents = NULL;
+size_t *pdf_lens = NULL;
+size_t *pdf_caps = NULL;
+int pdf_pages = 0;
 
 static void print_usage(const char *prog)
 {
@@ -28,6 +64,36 @@ FILE *fo;
 
 char pagename[256];
 int page = 1;
+
+// Get the directory of the executable
+char* get_executable_dir() {
+    static char exe_path[PATH_MAX];
+    static char exe_dir[PATH_MAX];
+    ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
+    if (len != -1) {
+        exe_path[len] = '\0';
+        char *dir = dirname(exe_path);
+        strncpy(exe_dir, dir, sizeof(exe_dir) - 1);
+        exe_dir[sizeof(exe_dir) - 1] = '\0';
+        return exe_dir;
+    }
+    return NULL;
+}
+
+// Resolve font path relative to executable directory
+char* resolve_font_path(const char *font_name) {
+    static char font_path[PATH_MAX];
+    char *exe_dir = get_executable_dir();
+    if (exe_dir) {
+        snprintf(font_path, sizeof(font_path), "%s/%s", exe_dir, font_name);
+        // Check if the file exists
+        if (access(font_path, F_OK) == 0) {
+            return font_path;
+        }
+    }
+    // If not found in executable directory, return original name (current directory)
+    return (char*)font_name;
+}
 
 // Printer specific functions
 #include "1403.h"
@@ -183,15 +249,13 @@ int main(int argc, char *argv[])
 
     // Initialize the PDF buffer and the printer (needs to be executed before anything else)
     pdf_init();
+    
+    // Resolve font path relative to executable directory and load the font
+    char *font_path = resolve_font_path(opt_font);
+    print_stderr("Font path resolved to: %s\n", font_path);
+    pdf_load_font(font_path);
+    
     printer_reset();
-
-    // Set the font to use
-    // if (pdf_set_font(opt_font) != 0)
-    // {
-    //     fprintf(stderr, "Error: cannot load font file %s\n", opt_font);
-    //     return 1;
-    // }
-    // print_stderr("Using font: %s\n", opt_font);
 
     // Read the input file character by character and produce PDF content in memory
     int c;

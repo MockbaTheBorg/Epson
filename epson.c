@@ -7,6 +7,31 @@
 #include <getopt.h>
 #include <unistd.h>
 
+#include "epson.h"
+
+// Global variables
+int draw_tractor_edges = 0;
+int draw_green_strips = 0;
+int wide_carriage = 0;
+int debug_enabled = 0;
+float page_width;
+float page_height;
+char **pdf_contents = NULL;
+size_t *pdf_lens = NULL;
+size_t *pdf_caps = NULL;
+int pdf_pages = 0;
+
+// Printer charset (9x9 bitmaps for 256 characters)
+int charset[256*9];
+
+// Input file
+FILE *fi;
+
+// Printer state variables
+float xpos, ypos, xstep, ystep, lstep, yoffset;
+int mode_bold, mode_italic, mode_doublestrike, mode_wide, mode_wide1line, mode_underline, mode_subscript, mode_superscript, mode_elite, mode_compressed;
+int line_count;
+
 static void print_usage(const char *prog)
 {
     fprintf(stderr, "Usage: %s [options] <inputfile>\n", prog);
@@ -178,9 +203,8 @@ int main(int argc, char *argv[])
 
     if (opt_wide)
     {
-        /* Use wide/legal printable carriage: 13.875 inches printable (standard continuous form / legal width)
-           When tractor edges are enabled the full media width will include the two 0.5in tractor strips. */
-        page_width = 13.875f;
+        // Use wide carriage: 13.875in printable area
+        page_width = WIDE_WIDTH;
         wide_carriage = 1;
         print_stderr("Wide carriage enabled (printable %.3fin).\n", page_width);
     }
