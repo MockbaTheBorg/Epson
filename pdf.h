@@ -187,7 +187,7 @@ void pdf_draw_char(float x_in, float y_in, int font_id, char c) {
     float cx = (x_in + x_offset) * 72.0f;
     // Add a top margin (font baseline offset) so first line is visible
     // For a 12pt font, we need about 12-14pt from the top edge
-    float top_margin_pt = 12.0f;
+    float top_margin_pt = 11.0f;
     float cy = page_height * 72.0f - (y_in * 72.0f) - top_margin_pt;
     // Use the embedded font at a fixed size (10pt for 10 CPI)
     float font_size_pt = 12.0f;

@@ -250,6 +250,9 @@ static inline void printer_print_column(int c) {
     // Printable area bounds (in inches)
     float printable_left = x_offset_in;
     float printable_right = x_offset_in + page_width;
+    // Add a small offset adjustment
+    float manual_xadj = 0.02f;
+    float manual_yadj = 0.05f;
 
     for (int i = 0; i < 9; i++) {
         if (c & (1 << i)) {
@@ -261,7 +264,7 @@ static inline void printer_print_column(int c) {
                 }
             }
             // Draw a small filled circle for each dot in the PDF content stream
-            pdf_draw_dot_inch(x_in, ypos + yoffset + adj + (i * ys), DOT_RADIUS, vintage_enabled ? vintage_dot_misalignment[i] : 0.0f);
+            pdf_draw_dot_inch(x_in + manual_xadj, ypos + yoffset + adj + (i * ys) + manual_yadj, DOT_RADIUS, vintage_enabled ? vintage_dot_misalignment[i] : 0.0f);
         }
     }
 }
@@ -313,7 +316,7 @@ static inline void printer_print_char(int c) {
         // Determine font based on modes
         int font_id = 1; // Courier
         // Determine character width (account for wide modes)
-        float char_width = 1.13f / page_cpi; // inches per character based on page_cpi
+        float char_width = 1.133f / page_cpi; // inches per character based on page_cpi
 
         // If printing this character would go past the printable right edge, wrap to next line
         float right_edge = page_xmargin + page_width;
