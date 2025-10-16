@@ -313,7 +313,7 @@ static inline void printer_print_char(int c) {
         // Determine font based on modes
         int font_id = 1; // Courier
         // Determine character width (account for wide modes)
-        float char_width = 1.0f / page_cpi; // inches per character based on page_cpi
+        float char_width = 1.13f / page_cpi; // inches per character based on page_cpi
 
         // If printing this character would go past the printable right edge, wrap to next line
         float right_edge = page_xmargin + page_width;
