@@ -222,7 +222,7 @@ static inline int file_get_char(FILE *fi) {
 }
 
 // Print one column of a character (Epson-specific)
-static inline void printer_print_column(int c) {
+static inline void epson_print_column(int c) {
     if (!epson_initialized) return;  // Only for Epson
     float ys = ystep * step72;
     float adj = step72 * 0.5;
@@ -265,14 +265,14 @@ static inline void printer_print_char(int c) {
         float yhs = ys / 2;
         for (int i = 0; i < 9; i++) {
             c = charset[index];
-            printer_print_column(c | mode_underline);
+            epson_print_column(c | mode_underline);
 
             if (mode_doublestrike)
                 ypos += yhs;
             if (mode_bold)
                 xpos += xs;
             if(mode_bold || mode_doublestrike) {
-                printer_print_column(c | mode_underline);
+                epson_print_column(c | mode_underline);
             }
             if (mode_bold)
                 xpos -= xs;
@@ -280,7 +280,7 @@ static inline void printer_print_char(int c) {
                 ypos -= yhs;
             if(mode_wide) {
                 xpos += xds;
-                printer_print_column(c | mode_underline);
+                epson_print_column(c | mode_underline);
                 xpos -= xs;
             }
             index++;
@@ -366,7 +366,7 @@ static inline void process_graphics(float gstep) {
             return;
         // reverse the bit order
         c = ((c & 0x01) << 7) | ((c & 0x02) << 5) | ((c & 0x04) << 3) | ((c & 0x08) << 1) | ((c & 0x10) >> 1) | ((c & 0x20) >> 3) | ((c & 0x40) >> 5) | ((c & 0x80) >> 7);
-        printer_print_column(c);
+        epson_print_column(c);
         xpos += xs;
         n--;
     }
