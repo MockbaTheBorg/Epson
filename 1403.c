@@ -15,22 +15,18 @@
 
 #include "printer.h"
 
-// Global variables
+// Global variables - shared with printer.h
 int draw_tractor_edges = 0;
 int draw_guide_strips = 0;
 int wide_carriage = 0;
 int debug_enabled = 0;
 int vintage_enabled = 0;
-// Per-column intensity multipliers (0..1.5) to simulate hammer force variation
 float *vintage_col_intensity = NULL;
 int vintage_cols = 0;
-// Per-character deterministic misalignment offsets (inches)
-// We'll store small x,y offsets for ASCII 32..126
 float vintage_char_xoff[127];
 float vintage_char_yoff[127];
-// Current intensity used by pdf drawing (1.0 = full black)
 float vintage_current_intensity = 1.0f;
-int wrap_enabled = 0; // default: do not wrap
+int wrap_enabled = 0;
 int guide_single_line = 0;
 int green_blue = 0;
 float page_width = PAGE_WIDTH;
@@ -44,7 +40,6 @@ float xpos = PAGE_XMARGIN;
 float ypos = PAGE_YMARGIN;
 float xstep = 0.5;
 float ystep = 1.0;
-// Epson-specific variables (needed by printer.c functions)
 float step60 = 1.0 / 52.9;
 float step72 = 1.0 / 72.0;
 float lstep = 1.0 / 6.0;
@@ -62,7 +57,9 @@ int mode_subscript = 0;
 int mode_superscript = 0;
 int mode_elite = 0;
 int mode_compressed = 0;
+int auto_cr = 0;
 FILE *fi;
+FILE *fo;
 char **pdf_contents = NULL;
 size_t *pdf_lens = NULL;
 size_t *pdf_caps = NULL;
@@ -84,15 +81,6 @@ static void print_usage(const char *prog)
     fprintf(stderr, "  -v, --vintage    Emulate worn ribbon + misalignment (repeatable)\n");
     fprintf(stderr, "  -h, --help       Show this help\n");
 }
-
-// Define the input and output files as global variables
-#define AUTO_LF 0
-
-FILE *fi;
-FILE *fo;
-
-char pagename[256];
-int page = 1;
 
 // Get the directory of the executable
 char* get_executable_dir() {
@@ -135,9 +123,6 @@ char* resolve_font_path(const char *font_name) {
     // If not found in executable directory, return original name (current directory)
     return (char*)font_name;
 }
-
-// The program reads one file from the command line and generates a pdf file.
-// If the output file is not specified, the output is written to stdout.
 
 // Initialize vintage emulation data structures (repeatable using seed)
 void vintage_init(unsigned int seed) {
@@ -183,10 +168,9 @@ int main(int argc, char *argv[])
     int opt_blue = 0;
     int opt_wide = 0;
     int opt_stdin = 0;
-    int opt_charset = 0;
     char *opt_font = "Printer.ttf";
 
-        // Parse command line options
+    // Parse command line options
     static struct option long_options[] = {
         {"edge", no_argument, 0, 'e'},
         {"guides", no_argument, 0, 'g'},
@@ -236,7 +220,6 @@ int main(int argc, char *argv[])
             opt_font = strdup(optarg);
             break;
         case 'd':
-            // enable runtime debug messages
             debug_enabled = 1;
             print_stderr("Debug enabled.\n");
             break;
@@ -283,7 +266,6 @@ int main(int argc, char *argv[])
     // Open output file or stdout
     if (outname != NULL)
     {
-        // open for binary write because we're producing a PDF
         fo = fopen(outname, "wb");
         if (fo == NULL)
         {
@@ -296,9 +278,7 @@ int main(int argc, char *argv[])
         fo = stdout;
     }
 
-
-    // If writing to stdout but stdout is a terminal, avoid dumping binary PDF to the console.
-    // Write to a default file 'out.pdf' instead and inform the user.
+    // If writing to stdout but stdout is a terminal, avoid dumping binary PDF to the console
     if (fo == stdout)
     {
 #ifdef _POSIX_VERSION
@@ -315,7 +295,6 @@ int main(int argc, char *argv[])
 #endif
     }
 
-    
     if (opt_edge)
     {
         draw_tractor_edges = 1;
@@ -338,14 +317,12 @@ int main(int argc, char *argv[])
 
     if (opt_wide)
     {
-        /* Use wide/legal printable carriage: 13.875 inches printable (standard continuous form / legal width)
-           When tractor edges are enabled the full media width will include the two 0.5in tractor strips. */
-        page_width = 13.875f;
+        page_width = WIDE_WIDTH;
         wide_carriage = 1;
         print_stderr("Wide carriage enabled (printable %.3fin).\n", page_width);
     }
 
-    // Initialize the PDF buffer and the printer (needs to be executed before anything else)
+    // Initialize the PDF buffer and the printer
     pdf_init();
     
     // Resolve font path relative to executable directory and load the font
@@ -355,14 +332,13 @@ int main(int argc, char *argv[])
     
     printer_reset();
 
-    // Initialize vintage emulation if requested. Use a fixed seed for repeatability.
+    // Initialize vintage emulation if requested
     if (vintage_enabled) {
-        // seed can be fixed or derived from filename; choose fixed to ensure repeatable across runs
         unsigned int seed = 0xDEADBEEF;
         vintage_init(seed);
     }
 
-    // Read the input file character by character and produce PDF content in memory
+    // Read the input file character by character and produce PDF content
     int c;
     while (1)
     {
@@ -374,9 +350,7 @@ int main(int argc, char *argv[])
     }
     print_stderr("\nEnd of file.\n");
 
-    // Write the generated PDF to the requested output. PDFs require seekable output
-    // for the xref table, so when the user requested stdout we write to a temporary
-    // seekable file and then stream it to stdout.
+    // Write the generated PDF to the requested output
     if (fo == stdout)
     {
         FILE *tmp = tmpfile();

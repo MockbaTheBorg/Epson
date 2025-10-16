@@ -1,4 +1,4 @@
-// Epson printer emulation
+// Epson dot-matrix printer emulation
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -6,67 +6,62 @@
 #include <ctype.h>
 #include <getopt.h>
 #include <unistd.h>
+#include <limits.h>
+#ifdef _POSIX_VERSION
+#include <unistd.h>
+#endif
 
 #include "printer.h"
+#include "charset.h"
 
-// Global variables
+// Global variables - shared with printer.h
 int draw_tractor_edges = 0;
 int draw_guide_strips = 0;
-int guide_single_line = 0;
-int green_blue = 0;
 int wide_carriage = 0;
 int debug_enabled = 0;
 int vintage_enabled = 0;
-float vintage_current_intensity = 1.0f;
-// Wrapping behavior for 1403 printer
-int wrap_enabled = 0;
-// Per-column intensity multipliers (0..1.5) to simulate hammer force variation
 float *vintage_col_intensity = NULL;
 int vintage_cols = 0;
-// Per-character deterministic misalignment offsets (inches)
-// We'll store small x,y offsets for ASCII 32..126
 float vintage_char_xoff[127];
 float vintage_char_yoff[127];
-float vintage_dot_misalignment[9];
+float vintage_current_intensity = 1.0f;
+int wrap_enabled = 0;
+int guide_single_line = 0;
+int green_blue = 0;
 float page_width = PAGE_WIDTH;
 float page_height = PAGE_HEIGHT;
 int page_cpi = PAGE_CPI;
 int page_lpi = PAGE_LPI;
 float page_xmargin = PAGE_XMARGIN;
 float page_ymargin = PAGE_YMARGIN;
-char **pdf_contents = NULL;
-size_t *pdf_lens = NULL;
-size_t *pdf_caps = NULL;
-int pdf_pages = 0;
-
-// Printer charset (9x9 bitmaps for 256 characters)
-int charset[256*9];
-// Is the printer initialized?
+int line_count = 0;
+float xpos = PAGE_XMARGIN;
+float ypos = PAGE_YMARGIN;
+float xstep = 0.5;
+float ystep = 1.0;
+float step60 = 1.0 / 52.9;
+float step72 = 1.0 / 72.0;
+float lstep = 1.0 / 6.0;
+float yoffset = 0.0;
 int epson_initialized = 0;
-// Input file (defined below with other globals)
-// Printer state variables (defined below)
-// Printer state variables (definitions)
-int auto_cr = 1;
+float vintage_dot_misalignment[9] = {0};
 int mode_bold = 0;
 int mode_italic = 0;
 int mode_doublestrike = 0;
 int mode_wide = 0;
 int mode_wide1line = 0;
+int mode_underline = 0;
 int mode_subscript = 0;
 int mode_superscript = 0;
-int mode_compressed = 0;
 int mode_elite = 0;
-int mode_underline = 0;
-
-float xpos = PAGE_XMARGIN;
-float ypos = PAGE_YMARGIN;
-float step60 = 0.0;         // in
-float step72 = 0.0;         // in
-float xstep = 0.5;          // in
-float ystep = 1.0;          // in
-float lstep = 0.0;          // in
-float yoffset = 0;          // in   (subscript/superscript)
-int line_count = 0;
+int mode_compressed = 0;
+int auto_cr = 0;
+FILE *fi;
+FILE *fo;
+char **pdf_contents = NULL;
+size_t *pdf_lens = NULL;
+size_t *pdf_caps = NULL;
+int pdf_pages = 0;
 
 static void print_usage(const char *prog)
 {
@@ -78,26 +73,44 @@ static void print_usage(const char *prog)
     fprintf(stderr, "  -o, --output F   Write PDF to file F (otherwise to stdout)\n");
     fprintf(stderr, "  -w, --wide       Use wide/legal carriage sizes (13.875in printable)\n");
     fprintf(stderr, "  -s, --stdin      Read input from standard input (takes precedence)\n");
-    fprintf(stderr, "  -c, --charset    Dump the printer character set to stderr and exit\n");
+    fprintf(stderr, "  -r, --wrap       Wrap long lines to next line instead of discarding\n");
     fprintf(stderr, "  -d, --debug      Enable debug messages\n");
-    fprintf(stderr, "  -v, --vintage    Enable vintage dot misalignment emulation\n");
+    fprintf(stderr, "  -v, --vintage    Emulate worn ribbon + misalignment (repeatable)\n");
     fprintf(stderr, "  -h, --help       Show this help\n");
 }
 
-// Define the input and output files as global variables
-#define AUTO_LF 0
-
-FILE *fi;
-FILE *fo;
-
-char pagename[256];
-int page = 1;
-
-// Printer specific functions
-#include "charset.h"
-
-// The program reads one file from the command line and generates a pdf file.
-// If the output file is not specified, the output is written to stdout.
+// Initialize vintage emulation data structures (repeatable using seed)
+void vintage_init(unsigned int seed) {
+    // determine number of character columns based on printable width and CPI
+    vintage_cols = (int)(page_width * page_cpi + 0.5f);
+    if (vintage_cols < 1) vintage_cols = 1;
+    vintage_col_intensity = (float*)malloc(sizeof(float) * vintage_cols);
+    // Seed RNG for repeatability
+    srand(seed);
+    // Fill per-column intensity: base around 0.7..1.0 with small variation
+    for (int i = 0; i < vintage_cols; i++) {
+        float r = (rand() & 0x7FFF) / (float)0x7FFF; // 0..1
+        float r2 = (rand() & 0x7FFF) / (float)0x7FFF;
+        float comb = (r * 0.7f) + (r2 * 0.3f);
+        vintage_col_intensity[i] = 0.7f + 0.3f * comb;
+    }
+    // Per-character deterministic misalignment: only some characters get a small offset
+    for (int c = 0; c < 127; c++) {
+        vintage_char_xoff[c] = 0.0f;
+        vintage_char_yoff[c] = 0.0f;
+    }
+    for (int c = 32; c <= 126; c++) {
+        int chance = rand() % 100;
+        if (chance < 20) {
+            float rx = ((rand() & 0x7FFF) / (float)0x7FFF) * 0.04f - 0.02f; // -0.02..0.02 in
+            float ry = ((rand() & 0x7FFF) / (float)0x7FFF) * 0.024f - 0.012f; // -0.012..0.012 in
+            vintage_char_xoff[c] = rx;
+            vintage_char_yoff[c] = ry;
+        }
+    }
+    vintage_current_intensity = 1.0f;
+    if (debug_enabled) print_stderr("Vintage: initialized %d cols\n", vintage_cols);
+}
 
 // Main program
 int main(int argc, char *argv[])
@@ -110,7 +123,6 @@ int main(int argc, char *argv[])
     int opt_blue = 0;
     int opt_wide = 0;
     int opt_stdin = 0;
-    int opt_charset = 0;
 
     // Parse command line options
     static struct option long_options[] = {
@@ -118,18 +130,18 @@ int main(int argc, char *argv[])
         {"guides", no_argument, 0, 'g'},
         {"single", no_argument, 0, '1'},
         {"blue", no_argument, 0, 'b'},
+        {"vintage", no_argument, 0, 'v'},
         {"output", required_argument, 0, 'o'},
         {"wide", no_argument, 0, 'w'},
+        {"wrap", no_argument, 0, 'r'},
         {"stdin", no_argument, 0, 's'},
-        {"charset", no_argument, 0, 'c'},
         {"debug", no_argument, 0, 'd'},
-        {"vintage", no_argument, 0, 'v'},
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}};
     int opt;
     int opt_index = 0;
     // getopt loop: options come before the input filename
-    while ((opt = getopt_long(argc, argv, "eg1bo:wscdhv", long_options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "eg1vbo:wsrf:dh", long_options, &opt_index)) != -1)
     {
         switch (opt)
         {
@@ -154,16 +166,16 @@ int main(int argc, char *argv[])
         case 's':
             opt_stdin = 1;
             break;
-        case 'c':
-            opt_charset = 1;
+        case 'r':
+            wrap_enabled = 1;
             break;
         case 'd':
-            // enable runtime debug messages
             debug_enabled = 1;
             print_stderr("Debug enabled.\n");
             break;
         case 'v':
             vintage_enabled = 1;
+            print_stderr("Vintage emulation enabled.\n");
             break;
         case 'h':
             print_usage(argv[0]);
@@ -172,26 +184,6 @@ int main(int argc, char *argv[])
             print_usage(argv[0]);
             return 1;
         }
-    }
-
-    // Initialize vintage misalignment if enabled
-    if (vintage_enabled) {
-        // Precalculated deterministic misalignments for each of the 9 dots (inches)
-        vintage_dot_misalignment[0] = -0.0007f;
-        vintage_dot_misalignment[1] =  0.0005f;
-        vintage_dot_misalignment[2] = -0.0009f;
-        vintage_dot_misalignment[3] =  0.0004f;
-        vintage_dot_misalignment[4] = -0.0006f;
-        vintage_dot_misalignment[5] =  0.0008f;
-        vintage_dot_misalignment[6] = -0.0003f;
-        vintage_dot_misalignment[7] =  0.0010f;
-        vintage_dot_misalignment[8] = -0.0005f;
-    }
-
-    // Lists the charset if requested and exits
-    if (opt_charset) {
-        dump_charset();
-        return 0;
     }
 
     // Decide input source: stdin (-s) takes precedence over any filename supplied
@@ -224,7 +216,6 @@ int main(int argc, char *argv[])
     // Open output file or stdout
     if (outname != NULL)
     {
-        // open for binary write because we're producing a PDF
         fo = fopen(outname, "wb");
         if (fo == NULL)
         {
@@ -237,8 +228,7 @@ int main(int argc, char *argv[])
         fo = stdout;
     }
 
-    // If writing to stdout but stdout is a terminal, avoid dumping binary PDF to the console.
-    // Write to a default file 'out.pdf' instead and inform the user.
+    // If writing to stdout but stdout is a terminal, avoid dumping binary PDF to the console
     if (fo == stdout)
     {
 #ifdef _POSIX_VERSION
@@ -277,17 +267,26 @@ int main(int argc, char *argv[])
 
     if (opt_wide)
     {
-        // Use wide carriage: 13.875in printable area
         page_width = WIDE_WIDTH;
         wide_carriage = 1;
         print_stderr("Wide carriage enabled (printable %.3fin).\n", page_width);
     }
 
-    // Initialize the PDF buffer and the printer (needs to be executed before anything else)
+    // Initialize the PDF buffer and the printer
     pdf_init();
-    printer_init();
+    pdf_load_font("Printer.ttf");
+    printer_reset();
 
-    // Read the input file character by character and produce PDF content in memory
+    // Initialize Epson character set and vintage effects
+    epson_init();
+
+    // Initialize vintage emulation if requested
+    if (vintage_enabled) {
+        unsigned int seed = 0xDEADBEEF;
+        vintage_init(seed);
+    }
+
+    // Read the input file character by character and produce PDF content
     int c;
     while (1)
     {
@@ -299,9 +298,7 @@ int main(int argc, char *argv[])
     }
     print_stderr("\nEnd of file.\n");
 
-    // Write the generated PDF to the requested output. PDFs require seekable output
-    // for the xref table, so when the user requested stdout we write to a temporary
-    // seekable file and then stream it to stdout.
+    // Write the generated PDF to the requested output
     if (fo == stdout)
     {
         FILE *tmp = tmpfile();

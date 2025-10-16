@@ -196,6 +196,11 @@ static inline void printer_init() {
     printer_reset();
 }
 
+// Alias for Epson emulator
+static inline void epson_init() {
+    printer_init();
+}
+
 // Reset the printer
 static inline void printer_reset() {
     // Restore default settings
