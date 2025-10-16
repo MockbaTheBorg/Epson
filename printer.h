@@ -168,16 +168,11 @@ static inline void rotate_charset() {
 }
 
 // Initialize the printer (Epson-specific)
-static inline void printer_init() {
+static inline void epson_init() {
     epson_initialized = 1;
     rotate_charset();
     if (debug_enabled) print_stderr("Printer initialized.\n");
     printer_reset();
-}
-
-// Alias for Epson emulator
-static inline void epson_init() {
-    printer_init();
 }
 
 // Reset the printer
@@ -550,7 +545,7 @@ static inline void process_bs() {
 }
 
 // Process a character (Epson-specific)
-static inline int printer_process_char(int c) {
+static inline int epson_process_char(int c) {
     if (!epson_initialized) {
         fprintf(stderr, "Error: printer not initialized.\n");
         return 1;

@@ -66,6 +66,7 @@ int pdf_pages = 0;
 static void print_usage(const char *prog)
 {
     fprintf(stderr, "Usage: %s [options] <inputfile>\n", prog);
+    fprintf(stderr, "  -a, --autocr     Automatically add CR after LF\n");
     fprintf(stderr, "  -e, --edge       Add perforated tractor edges (0.5in each side)\n");
     fprintf(stderr, "  -g, --guides     Add guide strips (green by default)\n");
     fprintf(stderr, "  -1, --single     Draw guide bands every 1 line instead of the default\n");
@@ -79,39 +80,6 @@ static void print_usage(const char *prog)
     fprintf(stderr, "  -h, --help       Show this help\n");
 }
 
-// Initialize vintage emulation data structures (repeatable using seed)
-void vintage_init(unsigned int seed) {
-    // determine number of character columns based on printable width and CPI
-    vintage_cols = (int)(page_width * page_cpi + 0.5f);
-    if (vintage_cols < 1) vintage_cols = 1;
-    vintage_col_intensity = (float*)malloc(sizeof(float) * vintage_cols);
-    // Seed RNG for repeatability
-    srand(seed);
-    // Fill per-column intensity: base around 0.7..1.0 with small variation
-    for (int i = 0; i < vintage_cols; i++) {
-        float r = (rand() & 0x7FFF) / (float)0x7FFF; // 0..1
-        float r2 = (rand() & 0x7FFF) / (float)0x7FFF;
-        float comb = (r * 0.7f) + (r2 * 0.3f);
-        vintage_col_intensity[i] = 0.7f + 0.3f * comb;
-    }
-    // Per-character deterministic misalignment: only some characters get a small offset
-    for (int c = 0; c < 127; c++) {
-        vintage_char_xoff[c] = 0.0f;
-        vintage_char_yoff[c] = 0.0f;
-    }
-    for (int c = 32; c <= 126; c++) {
-        int chance = rand() % 100;
-        if (chance < 20) {
-            float rx = ((rand() & 0x7FFF) / (float)0x7FFF) * 0.04f - 0.02f; // -0.02..0.02 in
-            float ry = ((rand() & 0x7FFF) / (float)0x7FFF) * 0.024f - 0.012f; // -0.012..0.012 in
-            vintage_char_xoff[c] = rx;
-            vintage_char_yoff[c] = ry;
-        }
-    }
-    vintage_current_intensity = 1.0f;
-    if (debug_enabled) print_stderr("Vintage: initialized %d cols\n", vintage_cols);
-}
-
 // Main program
 int main(int argc, char *argv[])
 {
@@ -123,9 +91,11 @@ int main(int argc, char *argv[])
     int opt_blue = 0;
     int opt_wide = 0;
     int opt_stdin = 0;
+    int opt_autocr = 0;
 
     // Parse command line options
     static struct option long_options[] = {
+        {"autocr", no_argument, 0, 'a'},
         {"edge", no_argument, 0, 'e'},
         {"guides", no_argument, 0, 'g'},
         {"single", no_argument, 0, '1'},
@@ -141,10 +111,13 @@ int main(int argc, char *argv[])
     int opt;
     int opt_index = 0;
     // getopt loop: options come before the input filename
-    while ((opt = getopt_long(argc, argv, "eg1bo:wsrdvh", long_options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "aeg1bo:wsrdvh", long_options, &opt_index)) != -1)
     {
         switch (opt)
         {
+        case 'a':
+            opt_autocr = 1;
+            break;
         case 'e':
             opt_edge = 1;
             break;
@@ -245,6 +218,12 @@ int main(int argc, char *argv[])
 #endif
     }
 
+    if (opt_autocr)
+    {
+        auto_cr = 1;
+        print_stderr("Auto CR after LF enabled.\n");
+    }
+
     if (opt_edge)
     {
         draw_tractor_edges = 1;
@@ -274,17 +253,11 @@ int main(int argc, char *argv[])
 
     // Initialize the PDF buffer and the printer
     pdf_init();
-    pdf_load_font("Printer.ttf");
-    printer_reset();
 
     // Initialize Epson character set and vintage effects
     epson_init();
 
-    // Initialize vintage emulation if requested
-    if (vintage_enabled) {
-        unsigned int seed = 0xDEADBEEF;
-        vintage_init(seed);
-    }
+    printer_reset();
 
     // Read the input file character by character and produce PDF content
     int c;
@@ -293,7 +266,7 @@ int main(int argc, char *argv[])
         c = file_get_char(fi);
         if (c == EOF)
             break;
-        if (printer_process_char(c))
+        if (epson_process_char(c))
             break;
     }
     print_stderr("\nEnd of file.\n");
