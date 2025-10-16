@@ -64,6 +64,8 @@ extern int draw_tractor_edges;
 extern int draw_green_strips;
 extern int wide_carriage;
 extern int debug_enabled; // forward decl for debug flag
+extern int vintage_enabled;
+extern float vintage_dot_misalignment[9];
 void pdf_draw_tractor_edges_page(void);
 void printer_reset(void);
 
@@ -233,7 +235,7 @@ void printer_print_column(int c) {
                 }
             }
             // Draw a small filled circle for each dot in the PDF content stream
-            pdf_draw_dot_inch(x_in, ypos + yoffset + adj + (i * ys), DOT_RADIUS);
+            pdf_draw_dot_inch(x_in, ypos + yoffset + adj + (i * ys), DOT_RADIUS, vintage_enabled ? vintage_dot_misalignment[i] : 0.0f);
         }
     }
 }

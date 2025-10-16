@@ -147,10 +147,11 @@ void pdf_init() {
 
 // Draw a filled circle centered at (x_in inches, y_in inches) with radius in points.
 // We approximate circle with 4 cubic Bézier curves using kappa.
-void pdf_draw_dot_inch(float x_in, float y_in, float radius_pt) {
+void pdf_draw_dot_inch(float x_in, float y_in, float radius_pt, float x_misalign_in) {
     // Convert to points (72 pt = 1 in). PDF origin is bottom-left.
     float cx = x_in * 72.0f;
     float cy = page_height * 72.0f - (y_in * 72.0f);
+    cx += x_misalign_in * 72.0f;  // Apply horizontal misalignment
     float r = radius_pt;
     const float k = 0.552284749831f; // approximation constant
     float ox = r * k;
@@ -371,8 +372,8 @@ void pdf_draw_tractor_edges_page() {
         float micro_spacing_in = 0.03125f; // spacing between microperforation dots (1/32")
         float micro_radius_pt = 0.45f; // small dot radius in points (smaller)
         for (float y = 0.0f; y <= page_height + 0.0001f; y += micro_spacing_in) {
-            pdf_draw_dot_inch(seam_left_in, y, micro_radius_pt);
-            pdf_draw_dot_inch(seam_right_in, y, micro_radius_pt);
+            pdf_draw_dot_inch(seam_left_in, y, micro_radius_pt, 0.0f);
+            pdf_draw_dot_inch(seam_right_in, y, micro_radius_pt, 0.0f);
         }
 
         // Draw tractor holes along left and right edges (centered in the strip)
@@ -387,8 +388,8 @@ void pdf_draw_tractor_edges_page() {
 
         for (float y = hole_margin; y <= page_height - hole_margin + 0.0001f; y += hole_spacing) {
             // draw circles in inches -- pdf_draw_dot_inch expects inches for x,y and points for radius
-            pdf_draw_dot_inch(left_center_x, y, hole_radius);
-            pdf_draw_dot_inch(right_center_x, y, hole_radius);
+            pdf_draw_dot_inch(left_center_x, y, hole_radius, 0.0f);
+            pdf_draw_dot_inch(right_center_x, y, hole_radius, 0.0f);
         }
     }
 

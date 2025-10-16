@@ -25,6 +25,7 @@ int vintage_cols = 0;
 // We'll store small x,y offsets for ASCII 32..126
 float vintage_char_xoff[127];
 float vintage_char_yoff[127];
+float vintage_dot_misalignment[9];
 float page_width = PAGE_WIDTH;
 float page_height = PAGE_HEIGHT;
 int page_cpi = PAGE_CPI;
@@ -75,6 +76,7 @@ static void print_usage(const char *prog)
     fprintf(stderr, "  -s, --stdin      Read input from standard input (takes precedence)\n");
     fprintf(stderr, "  -c, --charset    Dump the printer character set to stderr and exit\n");
     fprintf(stderr, "  -d, --debug      Enable debug messages\n");
+    fprintf(stderr, "  -v, --vintage    Enable vintage dot misalignment emulation\n");
     fprintf(stderr, "  -h, --help       Show this help\n");
 }
 
@@ -118,12 +120,13 @@ int main(int argc, char *argv[])
         {"stdin", no_argument, 0, 's'},
         {"charset", no_argument, 0, 'c'},
         {"debug", no_argument, 0, 'd'},
+        {"vintage", no_argument, 0, 'v'},
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}};
     int opt;
     int opt_index = 0;
     // getopt loop: options come before the input filename
-    while ((opt = getopt_long(argc, argv, "eg1bo:wscdh", long_options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "eg1bo:wscdhv", long_options, &opt_index)) != -1)
     {
         switch (opt)
         {
@@ -156,6 +159,9 @@ int main(int argc, char *argv[])
             debug_enabled = 1;
             print_stderr("Debug enabled.\n");
             break;
+        case 'v':
+            vintage_enabled = 1;
+            break;
         case 'h':
             print_usage(argv[0]);
             return 0;
@@ -163,6 +169,20 @@ int main(int argc, char *argv[])
             print_usage(argv[0]);
             return 1;
         }
+    }
+
+    // Initialize vintage misalignment if enabled
+    if (vintage_enabled) {
+        // Precalculated deterministic misalignments for each of the 9 dots (inches)
+        vintage_dot_misalignment[0] = -0.0007f;
+        vintage_dot_misalignment[1] =  0.0005f;
+        vintage_dot_misalignment[2] = -0.0009f;
+        vintage_dot_misalignment[3] =  0.0004f;
+        vintage_dot_misalignment[4] = -0.0006f;
+        vintage_dot_misalignment[5] =  0.0008f;
+        vintage_dot_misalignment[6] = -0.0003f;
+        vintage_dot_misalignment[7] =  0.0010f;
+        vintage_dot_misalignment[8] = -0.0005f;
     }
 
     // Lists the charset if requested and exits
