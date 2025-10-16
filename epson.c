@@ -16,11 +16,13 @@ int guide_single_line = 0;
 int green_blue = 0;
 int wide_carriage = 0;
 int debug_enabled = 0;
-// Vintage emulation globals (provide default definitions for epson build)
 int vintage_enabled = 0;
 float vintage_current_intensity = 1.0f;
+// Per-column intensity multipliers (0..1.5) to simulate hammer force variation
 float *vintage_col_intensity = NULL;
 int vintage_cols = 0;
+// Per-character deterministic misalignment offsets (inches)
+// We'll store small x,y offsets for ASCII 32..126
 float vintage_char_xoff[127];
 float vintage_char_yoff[127];
 float page_width = PAGE_WIDTH;
