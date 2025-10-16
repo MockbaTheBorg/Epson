@@ -9,6 +9,10 @@
 #include <libgen.h>
 #include <limits.h>
 
+#ifdef _WIN32
+    #include <windows.h>
+#endif
+
 #include "1403.h"
 
 // Global variables
@@ -86,6 +90,17 @@ int page = 1;
 char* get_executable_dir() {
     static char exe_path[PATH_MAX];
     static char exe_dir[PATH_MAX];
+
+#if defined(_WIN32) || defined(__CYGWIN__)
+    DWORD len = GetModuleFileNameA(NULL, exe_path, (DWORD)sizeof(exe_path));
+    if (len == 0 || len == sizeof(exe_path))
+        return NULL;
+    exe_path[len] = '\0';
+    char *dir = dirname(exe_path);
+    strncpy(exe_dir, dir, sizeof(exe_dir) - 1);
+    exe_dir[sizeof(exe_dir) - 1] = '\0';
+    return exe_dir;
+#else
     ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
     if (len != -1) {
         exe_path[len] = '\0';
@@ -95,6 +110,7 @@ char* get_executable_dir() {
         return exe_dir;
     }
     return NULL;
+#endif
 }
 
 // Resolve font path relative to executable directory
