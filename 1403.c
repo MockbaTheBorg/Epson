@@ -78,7 +78,7 @@ static void print_usage(const char *prog)
     fprintf(stderr, "  -r, --wrap       Wrap long lines to next line instead of discarding\n");
     fprintf(stderr, "  -f, --font F     Specify font to use (default: printer.ttf)\n");
     fprintf(stderr, "  -d, --debug      Enable debug messages\n");
-    fprintf(stderr, "  -v, --vintage    Emulate worn ribbon + misalignment (repeatable)\n");
+    fprintf(stderr, "  -v, --vintage    Emulate worn ribbon + misalignment\n");
     fprintf(stderr, "  -h, --help       Show this help\n");
 }
 

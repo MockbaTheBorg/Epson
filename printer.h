@@ -143,27 +143,6 @@ static inline void file_output(FILE *fo, const char *msg, ...) {
     va_end(args);
 }
 
-// Dump the charset to stdout as bitmap (for debugging, Epson-specific)
-static inline void dump_charset() {
-    int index = 0;
-    int c;
-    for (int i = 0; i < 256; i++) {
-        printf("Char %3d (0x%02X):\n", i, i);
-        for (int j = 0; j < 9; j++) {
-            c = charset[index++];
-            for (int k = 8; k >= 0; k--) {
-                if (c & (1 << k)) {
-                    printf("O");
-                } else {
-                    printf(".");
-                }
-            }
-            printf("\n");
-        }
-        printf("\n");
-    }
-}
-
 // Rotate the charset bitmaps 90 degrees clockwise (Epson-specific)
 static inline void rotate_charset() {
     int nc[9];
