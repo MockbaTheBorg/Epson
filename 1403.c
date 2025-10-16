@@ -176,19 +176,19 @@ int main(int argc, char *argv[])
         {"guides", no_argument, 0, 'g'},
         {"single", no_argument, 0, '1'},
         {"blue", no_argument, 0, 'b'},
-        {"vintage", no_argument, 0, 'v'},
         {"output", required_argument, 0, 'o'},
         {"wide", no_argument, 0, 'w'},
-        {"wrap", no_argument, 0, 'r'},
         {"stdin", no_argument, 0, 's'},
+        {"wrap", no_argument, 0, 'r'},
         {"font", required_argument, 0, 'f'},
         {"debug", no_argument, 0, 'd'},
+        {"vintage", no_argument, 0, 'v'},
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}};
     int opt;
     int opt_index = 0;
     // getopt loop: options come before the input filename
-    while ((opt = getopt_long(argc, argv, "eg1vbo:wsrf:dh", long_options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "eg1bo:wsrf:dvh", long_options, &opt_index)) != -1)
     {
         switch (opt)
         {
