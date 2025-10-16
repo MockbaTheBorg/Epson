@@ -68,6 +68,8 @@ int pdf_pages = 0;
 static void print_usage(const char *prog)
 {
     fprintf(stderr, "Usage: %s [options] <inputfile>\n", prog);
+    fprintf(stderr, "Options:\n");
+    fprintf(stderr, "  -a, --autocr     Automatically carriage return after line feed\n");
     fprintf(stderr, "  -e, --edge       Add perforated tractor edges (0.5in each side)\n");
     fprintf(stderr, "  -g, --guides     Add guide strips (green by default)\n");
     fprintf(stderr, "  -1, --single     Draw guide bands every 1 line instead of the default\n");
@@ -154,7 +156,7 @@ void vintage_init(unsigned int seed) {
         }
     }
     vintage_current_intensity = 1.0f;
-    if (debug_enabled) print_stderr("Vintage: initialized %d cols\n", vintage_cols);
+    print_stderr("Vintage: initialized %d cols\n", vintage_cols);
 }
 
 // Main program
@@ -168,10 +170,12 @@ int main(int argc, char *argv[])
     int opt_blue = 0;
     int opt_wide = 0;
     int opt_stdin = 0;
+    int opt_autocr = 0;
     char *opt_font = "Printer.ttf";
 
     // Parse command line options
     static struct option long_options[] = {
+        {"autocr", no_argument, 0, 'a'},
         {"edge", no_argument, 0, 'e'},
         {"guides", no_argument, 0, 'g'},
         {"single", no_argument, 0, '1'},
@@ -188,10 +192,13 @@ int main(int argc, char *argv[])
     int opt;
     int opt_index = 0;
     // getopt loop: options come before the input filename
-    while ((opt = getopt_long(argc, argv, "eg1bo:wsrf:dvh", long_options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "aeg1bo:wsrf:dvh", long_options, &opt_index)) != -1)
     {
         switch (opt)
         {
+        case 'a':
+            opt_autocr = 1;
+            break;
         case 'e':
             opt_edge = 1;
             break;
@@ -293,6 +300,12 @@ int main(int argc, char *argv[])
             }
         }
 #endif
+    }
+
+    if (opt_autocr)
+    {
+        auto_cr = 1;
+        print_stderr("Auto CR after LF enabled.\n");
     }
 
     if (opt_edge)

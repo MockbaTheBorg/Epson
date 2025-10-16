@@ -66,7 +66,8 @@ int pdf_pages = 0;
 static void print_usage(const char *prog)
 {
     fprintf(stderr, "Usage: %s [options] <inputfile>\n", prog);
-    fprintf(stderr, "  -a, --autocr     Automatically add CR after LF\n");
+    fprintf(stderr, "Options:\n");
+    fprintf(stderr, "  -a, --autocr     Automatically carriage return after line feed\n");
     fprintf(stderr, "  -e, --edge       Add perforated tractor edges (0.5in each side)\n");
     fprintf(stderr, "  -g, --guides     Add guide strips (green by default)\n");
     fprintf(stderr, "  -1, --single     Draw guide bands every 1 line instead of the default\n");

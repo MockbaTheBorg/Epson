@@ -127,8 +127,6 @@ static inline void print_stderr(const char *msg, ...) {
 
 // Print a control character to stderr
 static inline void print_control(int c) {
-    // use debug printing for control output
-    if (!debug_enabled) return;
     print_stderr("<%s>", control_names[c]);
     if (c == 10) {
         print_stderr("\n");
@@ -171,7 +169,7 @@ static inline void rotate_charset() {
 static inline void epson_init() {
     epson_initialized = 1;
     rotate_charset();
-    if (debug_enabled) print_stderr("Printer initialized.\n");
+    print_stderr("Printer initialized.\n");
     printer_reset();
 }
 
@@ -211,7 +209,7 @@ static inline void printer_reset() {
 
     //
     line_count = 0;  // Initialize line count
-    if (debug_enabled) print_stderr("Printer reset.\n");
+    print_stderr("Printer reset.\n");
 }
 
 // Get a character from the input file
@@ -525,7 +523,7 @@ static inline void process_ff() {
     // Create a new PDF page and reset the cursor to the top-left corner.
     // pdf_new_page uses page_width/page_height already defined.
     pdf_new_page();
-    if (debug_enabled) print_stderr("Advanced to page %d\n", pdf_pages);
+    print_stderr("Advanced to page %d\n", pdf_pages);
     xpos = page_xmargin;
     ypos = page_ymargin;
     line_count = 0;  // Reset line count on new page
@@ -689,6 +687,7 @@ static inline int hammer_process_char(int c) {
     }
 
     // Process control characters
+    print_control(c);
     switch (c) {
         case 9:     // HT (Horizontal Tab)
             {
