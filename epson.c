@@ -7,7 +7,7 @@
 #include <getopt.h>
 #include <unistd.h>
 
-#include "epson.h"
+#include "printer.h"
 
 // Global variables
 int draw_tractor_edges = 0;
@@ -18,6 +18,8 @@ int wide_carriage = 0;
 int debug_enabled = 0;
 int vintage_enabled = 0;
 float vintage_current_intensity = 1.0f;
+// Wrapping behavior for 1403 printer
+int wrap_enabled = 0;
 // Per-column intensity multipliers (0..1.5) to simulate hammer force variation
 float *vintage_col_intensity = NULL;
 int vintage_cols = 0;
@@ -39,6 +41,8 @@ int pdf_pages = 0;
 
 // Printer charset (9x9 bitmaps for 256 characters)
 int charset[256*9];
+// Is the printer initialized?
+int epson_initialized = 0;
 // Input file (defined below with other globals)
 // Printer state variables (defined below)
 // Printer state variables (definitions)
@@ -91,7 +95,6 @@ int page = 1;
 
 // Printer specific functions
 #include "charset.h"
-#include "epson.h"
 
 // The program reads one file from the command line and generates a pdf file.
 // If the output file is not specified, the output is written to stdout.

@@ -1,7 +1,9 @@
-#ifndef EPSON_H
-#define EPSON_H
+#ifndef PRINTER_H
+#define PRINTER_H
 
 #include "pdf.h"
+#include <stdarg.h>
+#include <stdio.h>
 
 // Global program settings
 #define DEBUG 0
@@ -14,10 +16,15 @@
 #define PAGE_LPI 6          // lpi
 #define PAGE_LINES ((int)(PAGE_HEIGHT * PAGE_LPI))  // 66 lines per page
 #define PAGE_XMARGIN 0.0    // in
-#define PAGE_YMARGIN 0.025  // in
+#define PAGE_YMARGIN 0.0    // in
 
 // Number of columns per tab stop (default 8)
 #define TAB_STOPS 8
+
+// Path maximum length
+#ifndef PATH_MAX
+    #define PATH_MAX 4096
+#endif
 
 // Printer dot
 #define DOT_RADIUS 0.5      // pt
@@ -46,28 +53,60 @@ extern int page_lpi;
 extern float page_xmargin;
 extern float page_ymargin;
 
+// Wrapping behavior: when set, long lines wrap to next line; otherwise extra chars are discarded
+extern int wrap_enabled;
+
 // Line counter for automatic pagination
 extern int line_count;
 
 // Page cursor position
 extern float xpos;
 extern float ypos;
-extern float step60;         // in
-extern float step72;         // in
+extern float step60;         // in (Epson-specific)
+extern float step72;         // in (Epson-specific)
 extern float xstep;          // in
 extern float ystep;          // in
-extern float lstep;          // in
-extern float yoffset;        // in   (subscript/superscript)
+extern float lstep;          // in (Epson-specific)
+extern float yoffset;        // in (subscript/superscript, Epson-specific)
 
 // Forward declarations for tractor-edge option (defined later)
 extern int draw_tractor_edges;
 extern int draw_green_strips;
+extern int draw_guide_strips;
+extern int guide_single_line;
+extern int green_blue;
 extern int wide_carriage;
-extern int debug_enabled; // forward decl for debug flag
+extern int debug_enabled;
 extern int vintage_enabled;
+
+// Epson-specific
 extern float vintage_dot_misalignment[9];
+
+// Vintage emulation
+void vintage_init(unsigned int seed);
+
+// Vintage arrays
+extern float *vintage_col_intensity;
+extern int vintage_cols;
+extern float vintage_char_xoff[127];
+extern float vintage_char_yoff[127];
+
+// Current intensity used by pdf drawing (1.0 = full black)
+extern float vintage_current_intensity;
+
 void pdf_draw_tractor_edges_page(void);
-void printer_reset(void);
+
+// Forward declarations for functions defined later in this header
+static inline void printer_reset(void);
+
+// Printer charset (9x9 bitmaps for 256 characters, Epson-specific)
+extern int charset[256*9];
+
+// Input file
+extern FILE *fi;
+
+// Is the printer initialized? (Epson-specific)
+extern int epson_initialized;
 
 // Define an array with the names of control characters from 0 to 31
 const char *control_names[] = {
@@ -77,22 +116,8 @@ const char *control_names[] = {
     "CAN", "EM", "SUB", "ESC", "FS", "GS", "RS", "US"
 };
 
-// Printer charset (9x9 bitmaps for 256 characters)
-extern int charset[256*9];
-
-// Input file
-extern FILE *fi;
-
-// Printer state variables
-extern float xpos, ypos, xstep, ystep, lstep, yoffset;
-extern int mode_bold, mode_italic, mode_doublestrike, mode_wide, mode_wide1line, mode_underline, mode_subscript, mode_superscript, mode_elite, mode_compressed;
-extern int line_count;
-
-// Is the printer initialized?
-int epson_initialized = 0;
-
 // Print a message to stderr (debug/info only)
-void print_stderr(const char *msg, ...) {
+static inline void print_stderr(const char *msg, ...) {
     if (!debug_enabled) return; // silent unless debug enabled
     va_list args;
     va_start(args, msg);
@@ -101,7 +126,7 @@ void print_stderr(const char *msg, ...) {
 }
 
 // Print a control character to stderr
-void print_control(int c) {
+static inline void print_control(int c) {
     // use debug printing for control output
     if (!debug_enabled) return;
     print_stderr("<%s>", control_names[c]);
@@ -111,15 +136,15 @@ void print_control(int c) {
 }
 
 // Print a message to the output file
-void file_output(FILE *fo, const char *msg, ...) {
+static inline void file_output(FILE *fo, const char *msg, ...) {
     va_list args;
     va_start(args, msg);
     vfprintf(fo, msg, args);
     va_end(args);
 }
 
-// Dump the charset to stdout as bitmap (for debugging)
-void dump_charset() {
+// Dump the charset to stdout as bitmap (for debugging, Epson-specific)
+static inline void dump_charset() {
     int index = 0;
     int c;
     for (int i = 0; i < 256; i++) {
@@ -139,8 +164,8 @@ void dump_charset() {
     }
 }
 
-// Rotate the charset bitmaps 90 degrees clockwise
-void rotate_charset() {
+// Rotate the charset bitmaps 90 degrees clockwise (Epson-specific)
+static inline void rotate_charset() {
     int nc[9];
     int index = 0;
     int c;
@@ -163,8 +188,8 @@ void rotate_charset() {
     }
 }
 
-// Initialize the printer
-void printer_init() {
+// Initialize the printer (Epson-specific)
+static inline void printer_init() {
     epson_initialized = 1;
     rotate_charset();
     if (debug_enabled) print_stderr("Printer initialized.\n");
@@ -172,11 +197,7 @@ void printer_init() {
 }
 
 // Reset the printer
-void printer_reset() {
-    if (!epson_initialized) {
-        fprintf(stderr, "Error: printer not initialized.\n");
-        return;
-    }
+static inline void printer_reset() {
     // Restore default settings
     // Respect wide_carriage: if set, keep wide printable page_width
     if (wide_carriage) {
@@ -189,34 +210,39 @@ void printer_reset() {
     page_lpi = PAGE_LPI;
     page_xmargin = PAGE_XMARGIN;
     page_ymargin = PAGE_YMARGIN;
-    //
-    mode_bold = 0;
-    mode_italic = 0;
-    mode_doublestrike = 0;
-    mode_wide = 0;
-    mode_wide1line = 0;
-    //
-    step60 = 1.0 / 52.9;    // in (1 pc = 1/6 in)
-    step72 = 1.0 / 72.0;    // in (1 pt = 1/72 in)
-    xstep = 0.5;            // pc
-    ystep = 1.0;          // in
-    lstep = 1.0 / 6.0;    // in
+
+    // Initialize Epson-specific fields if initialized
+    if (epson_initialized) {
+        mode_bold = 0;
+        mode_italic = 0;
+        mode_doublestrike = 0;
+        mode_wide = 0;
+        mode_wide1line = 0;
+        //
+        step60 = 1.0 / 52.9;    // in (1 pc = 1/6 in)
+        step72 = 1.0 / 72.0;    // in (1 pt = 1/72 in)
+        xstep = 0.5;            // pc
+        ystep = 1.0;          // in
+        lstep = 1.0 / 6.0;    // in
+    } else {
+        // 1403 hammer printer initialization
+        xstep = 0.5;          // pc
+        ystep = 1.0;          // in
+    }
+
     //
     line_count = 0;  // Initialize line count
     if (debug_enabled) print_stderr("Printer reset.\n");
 }
 
 // Get a character from the input file
-int file_get_char(FILE *fi) {
-    if (!epson_initialized) {
-        fprintf(stderr, "Error: printer not initialized.\n");
-        return EOF;
-    }
+static inline int file_get_char(FILE *fi) {
     return fgetc(fi);
 }
 
-// Print one column of a character
-void printer_print_column(int c) {
+// Print one column of a character (Epson-specific)
+static inline void printer_print_column(int c) {
+    if (!epson_initialized) return;  // Only for Epson
     float ys = ystep * step72;
     float adj = step72 * 0.5;
     // if tractor edges are present, printable area is offset from left by tractor strip width
@@ -241,49 +267,105 @@ void printer_print_column(int c) {
 }
 
 // Print one character
-void printer_print_char(int c) {
-    if (mode_italic)
-        c += 128;
-    int index = c * 9;
-    int lc = 0;
-    float xs = xstep * step60; // xs is in inches per dot column (1/120 in at 10 cpi)
-    float xhs = xs / 2;
-    float xds = xs * 2;
-    float ys = ystep * step72;
-    float yhs = ys / 2;
-    for (int i = 0; i < 9; i++) {
-        c = charset[index];
-        printer_print_column(c | mode_underline);
+static inline void printer_print_char(int c) {
+    if (epson_initialized) {
+        // Epson printer implementation
+        if (mode_italic)
+            c += 128;
+        int index = c * 9;
+        int lc = 0;
+        float xs = xstep * step60; // xs is in inches per dot column (1/120 in at 10 cpi)
+        float xhs = xs / 2;
+        float xds = xs * 2;
+        float ys = ystep * step72;
+        float yhs = ys / 2;
+        for (int i = 0; i < 9; i++) {
+            c = charset[index];
+            printer_print_column(c | mode_underline);
 
-        if (mode_doublestrike)
-            ypos += yhs;
-        if (mode_bold)
+            if (mode_doublestrike)
+                ypos += yhs;
+            if (mode_bold)
+                xpos += xs;
+            if(mode_bold || mode_doublestrike) {
+                printer_print_column(c | mode_underline);
+            }
+            if (mode_bold)
+                xpos -= xs;
+            if (mode_doublestrike)
+                ypos -= yhs;
+            if(mode_wide) {
+                xpos += xds;
+                printer_print_column(c | mode_underline);
+                xpos -= xs;
+            }
+            index++;
             xpos += xs;
-        if(mode_bold || mode_doublestrike) {
-            printer_print_column(c | mode_underline);
+            lc = c;
         }
-        if (mode_bold)
-            xpos -= xs;
-        if (mode_doublestrike)
-            ypos -= yhs;
-        if(mode_wide) {
-            xpos += xds;
-            printer_print_column(c | mode_underline);
-            xpos -= xs;
+        for (int i = 0; i <= mode_wide; i++) {
+            xpos += xs;
+            xpos += xs;
+            xpos += xs;
         }
-        index++;
-        xpos += xs;
-        lc = c;
-    }
-    for (int i = 0; i <= mode_wide; i++) {
-        xpos += xs;
-        xpos += xs;
-        xpos += xs;
+    } else {
+        // 1403 hammer printer implementation
+        // Determine font based on modes
+        int font_id = 1; // Courier
+        // Determine character width (account for wide modes)
+        float char_width = 1.0f / page_cpi; // inches per character based on page_cpi
+
+        // If printing this character would go past the printable right edge, wrap to next line
+        float right_edge = page_xmargin + page_width;
+        if (xpos + char_width > right_edge - 1e-6f) {
+            if (wrap_enabled) {
+                // advance to next line (like LF)
+                ypos += 1.0f / page_lpi;
+                xpos = page_xmargin;
+                line_count++;
+                if (ypos >= page_height || line_count >= PAGE_LINES) {
+                    pdf_new_page();
+                    ypos = page_ymargin;
+                    xpos = page_xmargin;
+                    line_count = 0;
+                }
+            } else {
+                // Discard character (do not draw or advance)
+                return;
+            }
+        }
+
+        // Determine vintage adjustments if enabled
+        float draw_x = xpos;
+        float draw_y = ypos;
+        if (vintage_enabled) {
+            // compute column index (0-based)
+            int col = (int)((xpos - page_xmargin) / char_width + 0.001f);
+            if (col < 0) col = 0;
+            if (vintage_cols > 0 && col >= vintage_cols) col = vintage_cols - 1;
+            // set current intensity for pdf drawing
+            if (vintage_col_intensity && vintage_cols > 0) {
+                vintage_current_intensity = vintage_col_intensity[col];
+            } else {
+                vintage_current_intensity = 1.0f;
+            }
+            // per-character deterministic misalignment (in inches)
+            if (c >= 0 && c < 127) {
+                draw_x += vintage_char_xoff[c];
+                draw_y += vintage_char_yoff[c];
+            }
+        }
+
+        // Draw the character (with any vintage adjustments applied)
+        pdf_draw_char(draw_x, draw_y, font_id, (char)c);
+        // Advance cursor
+        xpos += char_width;
     }
 }
 
-// Process graphics
-void process_graphics(float gstep) {
+// Process graphics (Epson-specific)
+static inline void process_graphics(float gstep) {
+    if (!epson_initialized) return;  // Only for Epson
     int nl = file_get_char(fi);
     if (nl == EOF)
         return;
@@ -306,8 +388,9 @@ void process_graphics(float gstep) {
     }
 }
 
-// Process LPI sequence
-void process_lpi(float ppi) {
+// Process LPI sequence (Epson-specific)
+static inline void process_lpi(float ppi) {
+    if (!epson_initialized) return;  // Only for Epson
     int n = file_get_char(fi);
     if (n == EOF)
         return;
@@ -316,9 +399,9 @@ void process_lpi(float ppi) {
     print_stderr("<%f>", lstep);
 }
 
-
-// Process subscript/superscript sequence
-int process_sscript() {
+// Process subscript/superscript sequence (Epson-specific)
+static inline int process_sscript() {
+    if (!epson_initialized) return 0;  // Only for Epson
     int c = file_get_char(fi);
     int result = 0;
     if (c < 31) {
@@ -350,8 +433,9 @@ int process_sscript() {
     return result;
 }
 
-// Process underline sequence
-void process_underline() {
+// Process underline sequence (Epson-specific)
+static inline void process_underline() {
+    if (!epson_initialized) return;  // Only for Epson
     int c = file_get_char(fi);
     if (c < 31) {
         print_control(c);
@@ -372,8 +456,9 @@ void process_underline() {
     }
 }
 
-// Process an escape sequence
-int printer_process_escape() {
+// Process an escape sequence (Epson-specific)
+static inline int printer_process_escape() {
+    if (!epson_initialized) return 0;  // Only for Epson
     int c = file_get_char(fi);
     int result = 0;
     print_stderr("<ESC>%c", c);
@@ -454,7 +539,7 @@ int printer_process_escape() {
 }
 
 // Process form feed
-void process_ff() {
+static inline void process_ff() {
     // Create a new PDF page and reset the cursor to the top-left corner.
     // pdf_new_page uses page_width/page_height already defined.
     pdf_new_page();
@@ -464,8 +549,9 @@ void process_ff() {
     line_count = 0;  // Reset line count on new page
 }
 
-// Process backspace
-void process_bs() {
+// Process backspace (Epson-specific)
+static inline void process_bs() {
+    if (!epson_initialized) return;  // Only for Epson
     float xs = xstep * step60;
     if (mode_wide1line || mode_wide) {
         xpos -= xs * 24.0;
@@ -476,8 +562,8 @@ void process_bs() {
         xpos = page_xmargin;
 }
 
-// Process a character
-int printer_process_char(int c) {
+// Process a character (Epson-specific)
+static inline int printer_process_char(int c) {
     if (!epson_initialized) {
         fprintf(stderr, "Error: printer not initialized.\n");
         return 1;
@@ -607,7 +693,61 @@ int printer_process_char(int c) {
     return 0;
 }
 
-// Option flags available at runtime
-// (TRACTOR_* macros are defined earlier near declarations)
+// 1403 hammer printer: Process a character
+static inline int hammer_process_char(int c) {
+    if (c == EOF) {
+        print_stderr("End of file.\n");
+        return 1;
+    }
 
-#endif // EPSON_H
+    // If c is a valid ASCII character, print it
+    if (c >= 32 && c <= 126) {
+        printer_print_char(c);
+        return 0;
+    }
+
+    // Process control characters
+    switch (c) {
+        case 9:     // HT (Horizontal Tab)
+            {
+                // Tab stops at every TAB_STOPS characters (standard)
+                float char_width = 1.0f / page_cpi; // width of one character in inches
+                float current_col = (xpos - page_xmargin) / char_width;
+                int next_tab_stop = ((int)(current_col / TAB_STOPS) + 1) * TAB_STOPS;
+                xpos = page_xmargin + (next_tab_stop * char_width);
+                // Don't go past right margin
+                if (xpos > page_width) {
+                    xpos = page_xmargin;
+                    ypos += 1.0 / page_lpi; // advance to next line
+                    if (ypos >= page_height) {
+                        pdf_new_page();
+                        ypos = page_ymargin;
+                    }
+                }
+            }
+            break;
+        case 10:    // LF
+            ypos += 1.0 / page_lpi;
+            if (ypos >= page_height) {
+                pdf_new_page();
+                ypos = page_ymargin;
+            }
+            xpos = page_xmargin;
+            break;
+        case 13:    // CR
+            xpos = page_xmargin;
+            break;
+        case 12:    // FF
+            pdf_new_page();
+            xpos = page_xmargin;
+            ypos = page_ymargin;
+            line_count = 0;
+            break;
+        default:
+            // ignore other control characters
+            break;
+    }
+    return 0;
+}
+
+#endif // PRINTER_H

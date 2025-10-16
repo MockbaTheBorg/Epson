@@ -13,7 +13,7 @@
     #include <windows.h>
 #endif
 
-#include "1403.h"
+#include "printer.h"
 
 // Global variables
 int draw_tractor_edges = 0;
@@ -44,6 +44,14 @@ float xpos = PAGE_XMARGIN;
 float ypos = PAGE_YMARGIN;
 float xstep = 0.5;
 float ystep = 1.0;
+// Epson-specific variables (needed by printer.c functions)
+float step60 = 1.0 / 52.9;
+float step72 = 1.0 / 72.0;
+float lstep = 1.0 / 6.0;
+float yoffset = 0.0;
+int epson_initialized = 0;
+int charset[256*9] = {0};
+float vintage_dot_misalignment[9] = {0};
 int mode_bold = 0;
 int mode_italic = 0;
 int mode_doublestrike = 0;
@@ -127,9 +135,6 @@ char* resolve_font_path(const char *font_name) {
     // If not found in executable directory, return original name (current directory)
     return (char*)font_name;
 }
-
-// Printer specific functions
-#include "1403.h"
 
 // The program reads one file from the command line and generates a pdf file.
 // If the output file is not specified, the output is written to stdout.
