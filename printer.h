@@ -127,7 +127,11 @@ static inline void print_stderr(const char *msg, ...) {
 
 // Print a control character to stderr
 static inline void print_control(int c) {
-    print_stderr("<%s>", control_names[c]);
+    if (c >= 0 && c <= 31) {
+        print_stderr("<%s>", control_names[c]);
+    } else {
+        print_stderr("<0x%02X>", c);
+    }
     if (c == 10) {
         print_stderr("\n");
     }
