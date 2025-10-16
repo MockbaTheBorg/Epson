@@ -123,7 +123,6 @@ int pdf_load_font(const char *font_file_path) {
         return 0;
     }
     font_path_used = strdup(font_file_path);
-    fprintf(stderr, "Loaded font: %s (%zu bytes)\n", font_file_path, font_data_len);
     return 1;
 }
 
