@@ -160,6 +160,20 @@ int main(int argc, char *argv[])
         }
     }
 
+    // Initialize vintage misalignment if enabled
+    if (vintage_enabled) {
+        // Precalculated deterministic misalignments for each of the 9 dots (inches)
+        vintage_dot_misalignment[0] = -0.0007f;
+        vintage_dot_misalignment[1] =  0.0005f;
+        vintage_dot_misalignment[2] = -0.0009f;
+        vintage_dot_misalignment[3] =  0.0004f;
+        vintage_dot_misalignment[4] = -0.0006f;
+        vintage_dot_misalignment[5] =  0.0008f;
+        vintage_dot_misalignment[6] = -0.0003f;
+        vintage_dot_misalignment[7] =  0.0010f;
+        vintage_dot_misalignment[8] = -0.0005f;
+    }
+
     // Decide input source: stdin (-s) takes precedence over any filename supplied
     if (opt_stdin)
     {
