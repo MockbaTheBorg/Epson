@@ -39,6 +39,7 @@ Note: The codebase currently contains shared headers that implement small PDF he
 
 Common options (short and long forms are supported where shown):
 
+- `-a`, `--autocr`      Automatically carriage return after line feed.
 - `-e`, `--edge`        Draw perforated tractor edges (0.5 in per side).
 - `-g`, `--guides`      Draw guide bands (soft green by default).
 - `-1`, `--single`      When used with guides: single-line bands (1 line high) instead of the default band height.
@@ -47,8 +48,8 @@ Common options (short and long forms are supported where shown):
 - `-w`, `--wide`        Use wide/legal printable carriage (13.875 in printable).
 - `-s`, `--stdin`       Read input from stdin (takes precedence over a filename argument).
 - `-r`, `--wrap`        Wrap long lines to the next line instead of discarding characters.
-- `-f`, `--font F`      Specify font file to embed (default: Printer.ttf). If the font can't be opened a built-in Courier is used.
 - `-d`, `--debug`       Enable debug messages on stderr.
+- `-v`, `--vintage`     Emulate a worn printer head (applies per-emulator effects; see 1403-specific notes below).
 - `-h`, `--help`        Show help and exit.
 
 Usage example:
@@ -63,15 +64,29 @@ cat input.txt | ./epson -s -o out.pdf
 
 ## 1403-specific notes (hammer printer emulator)
 
-The `1403` emulator implements an optional `vintage` mode that simulates two visual artifacts typical of a worn-out ribbon/printer:
+The `1403` emulator provides additional options beyond the shared set:
+
+- `-f`, `--font F`      Specify a custom font file to embed (default: `Printer.ttf`). The emulator will search for the font relative to the executable directory first, then fall back to the specified path.
+
+### Vintage mode (both emulators)
+
+Both emulators support an optional `--vintage` / `-v` mode:
+
+**1403 vintage mode** simulates two visual artifacts typical of a worn-out ribbon/printer:
 
 - Per-character misalignment: a deterministic small x/y offset is applied to a subset of characters (the same character is always misaligned the same way). This emulates a particular hammer impact or ink inconsistency for that glyph.
 - Per-column intensity variation: each character column gets a repeatable intensity multiplier making some columns slightly fainter (simulating varied hammer force or ribbon wear across the width of the carriage).
 
-Enable it with:
+**Epson vintage mode** simulates wear and mechanical degradation in the dot-matrix printer head:
+
+- Needle misalignment: Over time, individual needles in the print head can become slightly misaligned (bent or worn), causing dots to be displaced vertically or horizontally from their expected positions. In vintage mode, a deterministic per-needle offset is applied, creating a characteristic "wobbly" appearance where dots from the same column are not perfectly vertical.
+- Per-column intensity variation: Similar to the 1403, each column of dots gets a repeatable intensity modifier, simulating uneven wear of the needles or ink ribbon across the print head width.
+
+Enable vintage mode with:
 
 ```bash
 ./1403 -v -e -g -o test_vintage.pdf input.txt
+./epson -v -e -g -o test_vintage_epson.pdf input.txt
 ```
 
 Notes about `--vintage` behavior
