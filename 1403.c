@@ -28,6 +28,7 @@ float vintage_char_yoff[127];
 float vintage_current_intensity = 1.0f;
 int wrap_enabled = 0;
 int guide_single_line = 0;
+int guide_music_style = 0;
 int green_blue = 0;
 float page_width = PAGE_WIDTH;
 float page_height = PAGE_HEIGHT;
@@ -74,6 +75,7 @@ static void print_usage(const char *prog)
     fprintf(stderr, "  -g, --guides     Add guide strips (green by default)\n");
     fprintf(stderr, "  -1, --single     Draw guide bands every 1 line instead of the default\n");
     fprintf(stderr, "  -b, --blue       Draw guide bands in blue instead of green\n");
+    fprintf(stderr, "  -m, --music      Draw single bands in music style (5 lines per band)\n");
     fprintf(stderr, "  -o, --output F   Write PDF to file F (otherwise to stdout)\n");
     fprintf(stderr, "  -w, --wide       Use wide/legal carriage sizes (13.875in printable)\n");
     fprintf(stderr, "  -s, --stdin      Read input from standard input (takes precedence)\n");
@@ -168,6 +170,7 @@ int main(int argc, char *argv[])
     int opt_guides = 0;
     int opt_single = 0;
     int opt_blue = 0;
+    int opt_music = 0;
     int opt_wide = 0;
     int opt_stdin = 0;
     int opt_autocr = 0;
@@ -180,6 +183,7 @@ int main(int argc, char *argv[])
         {"guides", no_argument, 0, 'g'},
         {"single", no_argument, 0, '1'},
         {"blue", no_argument, 0, 'b'},
+        {"music", no_argument, 0, 'm'},
         {"output", required_argument, 0, 'o'},
         {"wide", no_argument, 0, 'w'},
         {"stdin", no_argument, 0, 's'},
@@ -192,7 +196,7 @@ int main(int argc, char *argv[])
     int opt;
     int opt_index = 0;
     // getopt loop: options come before the input filename
-    while ((opt = getopt_long(argc, argv, "aeg1bo:wsrf:dvh", long_options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "aeg1bmo:wsrf:dvh", long_options, &opt_index)) != -1)
     {
         switch (opt)
         {
@@ -210,6 +214,9 @@ int main(int argc, char *argv[])
             break;
         case 'b':
             opt_blue = 1;
+            break;
+        case 'm':
+            opt_music = 1;
             break;
         case 'o':
             outname = strdup(optarg);
@@ -325,6 +332,10 @@ int main(int argc, char *argv[])
         if (opt_blue) {
             green_blue = 1;
             print_stderr("Guide strips set to blue (overrides green).\n");
+        }
+        if (opt_music) {
+            guide_music_style = 1;
+            print_stderr("Guide strips: 'music' style mode enabled (5 lines per band).\n");
         }
     }
 

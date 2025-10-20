@@ -10,6 +10,7 @@
 extern int draw_tractor_edges;
 extern int draw_guide_strips;
 extern int guide_single_line;
+extern int guide_music_style;
 extern int green_blue;
 extern float page_width;
 extern float page_height;
@@ -357,9 +358,18 @@ void pdf_draw_tractor_edges_page() {
             float h_band = band_h_in;
             if (y + h_band > page_height) h_band = page_height - y;
             // x offset ensures guide bands do not cover tractor edges
-            pdf_appendf("%.3f %.3f %.3f %.3f re\nf\n", x_offset_in * 72.0f, y * 72.0f, full_w_in * 72.0f, h_band * 72.0f);
-            // advance to the next band (band + white)
-            y += band_h_in * 2.0f;
+                if (guide_single_line && guide_music_style) {
+                    // 'music' style: draw a band made of 5 thin lines
+                    float line_h_in = band_h_in / 10.0f; // thin line height
+                    for (int line = 0; line < 5; line++) {
+                        float line_y = y + line * 2.0f * line_h_in;
+                        pdf_appendf("%.3f %.3f %.3f %.3f re\nf\n", x_offset_in * 72.0f, line_y * 72.0f, full_w_in * 72.0f, line_h_in * 72.0f);
+                    }
+                } else {
+                    pdf_appendf("%.3f %.3f %.3f %.3f re\nf\n", x_offset_in * 72.0f, y * 72.0f, full_w_in * 72.0f, h_band * 72.0f);
+                }
+                // advance to the next band (band + white)
+                y += band_h_in * 2.0f;
         }
         // reset fill color to black
         pdf_appendf("0 0 0 rg\n");

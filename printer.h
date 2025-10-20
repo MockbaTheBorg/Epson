@@ -74,6 +74,7 @@ extern int draw_tractor_edges;
 extern int draw_green_strips;
 extern int draw_guide_strips;
 extern int guide_single_line;
+extern int guide_music_style;
 extern int green_blue;
 extern int wide_carriage;
 extern int debug_enabled;
