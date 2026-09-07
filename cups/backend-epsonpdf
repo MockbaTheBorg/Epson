@@ -1,0 +1,40 @@
+#!/bin/bash
+# CUPS backend: renders raw print jobs into a PDF via ./epson instead of sending to real hardware.
+# Backend calling convention: backend job-id user title copies options [job-file]
+set -u
+
+if [ "$#" -eq 0 ]; then
+    echo 'direct epsonpdf "Unknown" "Epson LX PDF Printer"'
+    exit 0
+fi
+
+BIN="/home/mockba/Emulation/Epson/epson"
+OUTDIR="/var/spool/printer-emu/epson"
+
+# Keep only safe filename characters to avoid path traversal / injection via job metadata
+sanitize() {
+    printf '%s' "$1" | tr -c 'A-Za-z0-9._-' '_'
+}
+
+JOBID="${1:-0}"
+SAFE_USER=$(sanitize "${2:-user}")
+SAFE_TITLE=$(sanitize "${3:-job}")
+TS=$(date +%Y%m%d-%H%M%S)
+
+mkdir -p "$OUTDIR"
+OUTFILE="$OUTDIR/epson-${JOBID}_${SAFE_USER}_${SAFE_TITLE}_${TS}.pdf"
+
+if [ -n "${6:-}" ] && [ -f "${6:-}" ]; then
+    "$BIN" -a -e -g -w -o "$OUTFILE" "$6"
+else
+    "$BIN" -a -e -g -w -s -o "$OUTFILE"
+fi
+
+status=$?
+if [ $status -ne 0 ]; then
+    echo "ERROR: epson renderer failed (exit $status)" >&2
+    exit 1
+fi
+chmod 644 "$OUTFILE" 2>/dev/null || true
+chown "${2:-}" "$OUTFILE" 2>/dev/null || true
+exit 0

@@ -112,6 +112,60 @@ Notes about `--vintage` behavior
 ./1403 -v -e -g -o test_vintage.pdf input.txt
 ```
 
+## Printing from Linux (CUPS virtual printers)
+
+You can install `epson` and `1403` as real, selectable printers on Linux. Anything
+sent to them gets rendered into a PDF instead of physical paper — no real printer
+needed.
+
+### Install
+
+```bash
+cd cups
+./install-printers.sh
+```
+
+This registers two CUPS queues:
+
+- `Epson-LX` → renders with `./epson`, output in `/var/spool/printer-emu/epson/`
+- `IBM-1403` → renders with `./1403`, output in `/var/spool/printer-emu/1403/`
+
+Both queues appear in `lpstat -p`, in any GUI print dialog, and can be printed to
+with `lp`/`lpr` like any other printer. Both use `-e -g -w` by default (tractor
+edges, guide bands, wide carriage). `Epson-LX` also adds `-a` (autocr): plain
+Unix text files only use bare `\n` for line breaks, and real ESC/P printers treat
+LF as "advance one line" without a carriage return unless autocr is on — without
+it, lines drift right on each row. `1403` doesn't need this flag since real line
+printers always carriage-return on LF.
+
+To remove them: `./cups/uninstall-printers.sh` (spooled PDFs are left in place).
+
+### Examples
+
+Print a text file:
+
+```bash
+lp -d Epson-LX readme.md
+lp -d IBM-1403 readme.md
+```
+
+Print command output by piping through `lp`:
+
+```bash
+ls -l | lp -d Epson-LX
+ps aux | lp -d IBM-1403
+dmesg | lp -d Epson-LX
+```
+
+Print from any app's "Print" dialog by picking `Epson-LX` or `IBM-1403` as the
+printer — the job still comes out as a PDF in the spool folder above.
+
+Each print job gets its own timestamped PDF, e.g.:
+
+```
+/var/spool/printer-emu/epson/epson-102_mockba_ls-output_20260906-231045.pdf
+```
+
 ## License & credits
 
 See the source headers for licensing information and attribution.
