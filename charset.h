@@ -1,3 +1,5 @@
+/* Mockba the Borg - Character set definitions
+   https://github.com/MockbaTheBorg/Epson */
 #ifndef CHARSET_H
 #define CHARSET_H
 

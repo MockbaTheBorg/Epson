@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+#
+# Mockba the Borg - Text to printer format converter
+# https://github.com/MockbaTheBorg/Epson
 """
 ASCII Art to Epson LX-80 Printer File Converter
 Converts text files with asterisks and spaces to Epson ESC/P graphics format

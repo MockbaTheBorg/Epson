@@ -1,3 +1,5 @@
+/* Mockba the Borg - PDF support functions
+   https://github.com/MockbaTheBorg/Epson */
 #ifndef PDF_H
 #define PDF_H
 

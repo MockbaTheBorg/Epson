@@ -1,3 +1,5 @@
+/* Mockba the Borg - Printer interface definitions
+   https://github.com/MockbaTheBorg/Epson */
 #ifndef PRINTER_H
 #define PRINTER_H
 

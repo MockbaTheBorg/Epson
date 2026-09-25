@@ -1,4 +1,5 @@
-// Epson dot-matrix printer emulation
+/* Mockba the Borg - Epson dot-matrix printer emulation
+   https://github.com/MockbaTheBorg/Epson */
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>

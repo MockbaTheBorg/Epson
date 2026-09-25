@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+#
+# Mockba the Borg - PNG to printer format converter
+# https://github.com/MockbaTheBorg/Epson
 """
 PNG to Epson LX-80 Printer File Converter
 Converts PNG images to Epson ESC/P format for dot-matrix printing

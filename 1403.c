@@ -1,4 +1,5 @@
-// Hammer printer emulation
+/* Mockba the Borg - Hammer printer emulation
+   https://github.com/MockbaTheBorg/Epson */
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
